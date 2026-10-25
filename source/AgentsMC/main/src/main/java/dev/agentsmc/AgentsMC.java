@@ -313,11 +313,12 @@ public final class AgentsMC extends Citizens {
                     List<String> ops = AgentOp.ops();
                     sender.sendMessage("[AgentsMC] op agents (" + ops.size() + "): " + (ops.isEmpty() ? "none" : String.join(", ", ops)));
                 } else {
-                    require(args.length == 2, "/agentsmc " + args[0] + " <agent name>");
-                    NPC target = AgentOp.agentByName(args[1]);
-                    String agentId = target != null ? AgentErrors.text(target.data().get(AGENT_ID)) : args[1].toLowerCase(java.util.Locale.ROOT);
+                    String who = AgentOp.joinName(args);
+                    require(!who.isEmpty(), "/agentsmc " + args[0] + " <agent name or id>");
+                    NPC target = AgentOp.agentByName(who);
+                    String agentId = target != null ? AgentErrors.text(target.data().get(AGENT_ID)) : who.toLowerCase(java.util.Locale.ROOT);
                     if (args[0].equals("op")) {
-                        require(target != null, "Unknown agent: " + args[1]);
+                        require(target != null, "Unknown agent: " + who);
                         boolean changed = AgentOp.grant(agentId);
                         sender.sendMessage("[AgentsMC] " + (changed ? "opped agent " : "agent already opped: ") + agentId);
                     } else {
@@ -954,7 +955,11 @@ public final class AgentsMC extends Citizens {
                             Material material = p.getWorld().getBlockAt(bx, by, bz).getType();
                             if (!material.isAir()) {
                                 counts.merge(material.name(), 1, Integer::sum);
-                                if (includeBlocks) blocks.add(result("x", p.getBlockX() + x, "y", by, "z", p.getBlockZ() + z, "material", material.name()));
+                                if (includeBlocks) {
+                                    Map<String, Object> row = result("x", p.getBlockX() + x, "y", by, "z", p.getBlockZ() + z, "material", material.name());
+                                    if (p.getWorld().getBlockAt(bx, by, bz).getBlockData() instanceof org.bukkit.block.data.type.Snow snow) row.put("layers", snow.getLayers());
+                                    blocks.add(row);
+                                }
                             }
                         }
                 List<Object> nearby = new ArrayList<>();

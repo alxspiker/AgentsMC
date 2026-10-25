@@ -50,9 +50,9 @@ public final class FollowTest {
         targetLookup();
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.2".equals(version), "plugin.yml version: " + version);
+        check("0.7.3".equals(version), "plugin.yml version: " + version);
 
-        System.out.println("PASS: follow pace/hold/overlook/no_path, name lookup, non-empty errors, 0.7.2");
+        System.out.println("PASS: follow pace/hold/overlook/no_path, name lookup, non-empty errors, 0.7.3");
     }
 
     private static void targetLookup() {

@@ -373,6 +373,11 @@ final class AgentOp {
     }
 
     /* ---------- target resolution: online players, then agents (Citizens NPCs) ---------- */
+    /** 0.7.3: "/agentsmc op Intern Steve" — join args[1..] into one name (names may contain spaces). */
+    static String joinName(String[] args) {
+        if (args == null || args.length < 2) return "";
+        return String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)).trim().replaceAll("\\s+", " ");
+    }
     static NPC agentByName(String name) {
         NPC hit = null;
         for (NPC npc : CitizensAPI.getNPCRegistry()) {

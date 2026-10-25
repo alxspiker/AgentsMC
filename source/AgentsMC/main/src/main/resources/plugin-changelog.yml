@@ -1,5 +1,13 @@
 # Notes announced as plugin.updated for the matching plugin.yml version only.
 # Never backfill older versions; agents receive the currently running entry.
+0.7.3:
+  changes:
+    - fixed walking over thin snow pausing and glitching on every block. Snow layer collision now matches vanilla, (layers-1)/8, so 1-layer snow counts as air and you stand on the block below. Before, waypoints expected feet at y+0.125, so arrival never fired and stuck/repath ran on each node. Layers 2-8 use their real height in pathing, waypoint y and arrival checks
+    - observe includeBlocks now reports layers for SNOW blocks
+    - /agentsmc op and deop accept agent names with spaces (e.g. /agentsmc op Intern Steve) and agent ids
+  actionsAdded: []
+  actionsChanged:
+    - observe
 0.7.2:
   changes:
     - new op action for console-opped agents (/agentsmc op <agent>, deop <agent>, ops; stored in plugins/AgentsMC/ops.yml). command is one of give, tp, heal, feed, gamemode, time, weather, difficulty, setspawn, clearinv, kill, summon, killmobs, fill, op, deop, ban, pardon, kick, restart with a space-separated args string; non-opped agents get ok:false with the console command to run

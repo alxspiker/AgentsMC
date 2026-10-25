@@ -22,6 +22,9 @@ public final class AgentOpTest {
         AgentOp.attach(file);
         check(AgentOp.ops().isEmpty(), "revoke persisted");
 
+        check("Intern Steve".equals(AgentOp.joinName(new String[]{"op", "Intern", "Steve"})), "op name with space");
+        check("intern".equals(AgentOp.joinName(new String[]{"deop", "intern"})), "op by id");
+        check("".equals(AgentOp.joinName(new String[]{"op"})), "op missing name");
         JsonObject o = new JsonObject();
         o.addProperty("action", "op");
         o.addProperty("command", "Give");
@@ -46,7 +49,7 @@ public final class AgentOpTest {
         check(AgentActionCatalog.executable("op"), "op in catalog");
         check(BridgeProtocol.dropActionResult("Bridge POST /api/server/actions/x returned HTTP 404 sentKeys={}") , "404 dropped");
         check(!BridgeProtocol.dropActionResult("Bridge POST /api/server/actions/x returned HTTP 409"), "409 kept");
-        System.out.println("PASS: op grant persistence, allow-list (no stop), args, time, fill/killmobs caps, 404 result drop, 0.7.2");
+        System.out.println("PASS: op grant persistence, allow-list (no stop), args, time, fill/killmobs caps, 404 result drop, 0.7.3");
     }
     private static void fails(Runnable r, String what) {
         try { r.run(); } catch (IllegalArgumentException expected) { return; }

@@ -63,9 +63,9 @@ public final class FinishActionsTest {
                 "catalog finish: give on, command off");
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.2".equals(version), "plugin.yml version: " + version);
+        check("0.7.3".equals(version), "plugin.yml version: " + version);
 
-        System.out.println("PASS: give/throw/drink/tame/fill/move/retreat helpers, command stays off, 0.7.2");
+        System.out.println("PASS: give/throw/drink/tame/fill/move/retreat helpers, command stays off, 0.7.3");
     }
 
     private static void check(boolean ok, String message) {

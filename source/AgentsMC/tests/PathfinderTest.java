@@ -54,6 +54,31 @@ public final class PathfinderTest {
         public boolean protectedCell(int x, int y, int z) { return prot.contains(x + "," + z); }
     }
 
+    /** 0.7.3: snow layer collision is (layers-1)/8; 1 layer = air (feet on block below). */
+    static void snowLayers073() {
+        check(AgentPathfinder.surfaceHeight("SNOW", 1, true) == 0, "1-layer snow has no collision");
+        check(AgentPathfinder.surfaceHeight("SNOW", 2, true) == 0.125, "2-layer snow 0.125");
+        check(AgentPathfinder.surfaceHeight("SNOW", 8, true) == 0.875, "8-layer snow 0.875");
+        check(AgentPathfinder.thinPassable("SNOW", 1, true) && AgentPathfinder.thinPassable("SNOW", 8, true), "snow passable");
+        check(!AgentPathfinder.cellFloor("SNOW", false, false, true, true, 0), "1-layer snow is not a floor");
+        // Live repro: cobble at y87, 1-layer snow at y88 (feet cell).
+        MapGrid g = new MapGrid(0, 128);
+        for (int x = -6; x <= 6; x++) for (int z = -6; z <= 6; z++) { g.set(x, 87, z, "cobblestone"); g.set(x, 88, z, "snow"); }
+        check(g.standable(0, 88, 0), "standable in 1-layer snow cell over cobble");
+        check(g.standY(0, 88, 0) == 88.0, "feet y on 1-layer snow is 88.0: " + g.standY(0, 88, 0));
+        AgentPathfinder.Result r = AgentPathfinder.plan(0, 88, 0, 5, 88, 3, g, new AgentPathfinder.Options());
+        check(r.fail == null && r.path != null, "plan across snow: " + r.fail);
+        for (int[] wp : r.path) {
+            check(wp[1] == 88, "waypoint y stays 88: " + java.util.Arrays.toString(wp));
+            // Agent standing exactly on the cobble (feet 88.0) at the node center must count as arrived.
+            check(AgentNavigation.reachedWaypoint(wp[0] + .5, 88.0, wp[2] + .5, wp, g.standY(wp[0], wp[1], wp[2])),
+                    "arrived on snow node " + java.util.Arrays.toString(wp));
+        }
+        // Old bug: standY 88.125 made feet 88.0 fail reachedWaypoint (y < standY - ON_STEP).
+        check(!AgentNavigation.reachedWaypoint(.5, 88.0, .5, new int[]{0, 88, 0}, 88.125), "regression guard: old standY rejected arrival");
+        System.out.println("PASS: 0.7.3 snow layers: 1 layer = air, (layers-1)/8 collision, arrival on snow nodes");
+    }
+
     /** 0.7.0: snow step-up, 1-wide hole avoid/exit, portal helpers. */
     static void fb0680() {
         // fb-39/40: feet on 1-layer snow (88.125) to snow one block up (89.125) is a normal jump.
@@ -111,6 +136,7 @@ public final class PathfinderTest {
         longLeg();
         snowLayers();
         fb0680();
+        snowLayers073();
         longWalk();
         stuckClock();
         pocketLeaves();
@@ -560,10 +586,10 @@ public final class PathfinderTest {
         check(AgentPathfinder.thinName("snow") && AgentPathfinder.thinName("white_carpet")
                 && AgentPathfinder.thinName("oak_slab") && AgentPathfinder.thinName("moss_carpet"), "thin names");
         check(!AgentPathfinder.thinName("snow_block") && !AgentPathfinder.thinName("powder_snow"), "full/hazard snow is not thin");
-        check(Math.abs(AgentPathfinder.surfaceHeight("snow", 1, true) - 0.125) < 1e-9, "1-layer snow is 0.125");
+        check(Math.abs(AgentPathfinder.surfaceHeight("snow", 1, true)) < 1e-9, "1-layer snow has no collision (0.7.3)");
         check(Math.abs(AgentPathfinder.surfaceHeight("white_carpet") - 0.0625) < 1e-9, "carpet is 1/16");
         check(Math.abs(AgentPathfinder.surfaceHeight("oak_slab", 1, true) - 0.5) < 1e-9, "bottom slab is 0.5");
-        check(AgentPathfinder.thinPassable("snow", 1, true) && !AgentPathfinder.thinPassable("snow", 8, true), "8-layer snow is a full block");
+        check(AgentPathfinder.thinPassable("snow", 1, true) && AgentPathfinder.thinPassable("snow", 8, true), "8-layer snow is 0.875 thin (0.7.3)");
 
         MapGrid g = new MapGrid(-64, 320);
         // (8,110,-16.8) analog: snow_block at 109, 1-layer snow at 110, air above.
@@ -571,7 +597,7 @@ public final class PathfinderTest {
         for (int x = 0; x <= 30; x++) for (int z = -20; z <= -10; z++) g.set(x, 110, z, "snow");
         check(g.open(8, 110, -16) && g.open(8, 111, -16) && g.floor(8, 109, -16), "snow layer is passable over snow_block");
         check(g.standable(8, 110, -16), "standing in the snow-layer cell");
-        check(Math.abs(g.standY(8, 110, -16) - 110.125) < 1e-9, "stand Y is y+0.125, not y+1: " + g.standY(8, 110, -16));
+        check(Math.abs(g.standY(8, 110, -16) - 110.0) < 1e-9, "stand Y is y (1 layer = air), not y+1: " + g.standY(8, 110, -16));
         check(!g.standable(8, 111, -16), "must not treat 1-layer snow as a full block to climb");
 
         AgentPathfinder.Result r = AgentPathfinder.plan(8, 110, -16, 24, 110, -16, g, new AgentPathfinder.Options());
@@ -580,12 +606,12 @@ public final class PathfinderTest {
             check(p[1] == 110, "snow path stayed at feet Y=110, not 111: " + p[0] + "," + p[1] + "," + p[2]);
             check(g.open(p[0], p[1], p[2]), "path cell is walkable snow/air");
         }
-        double moved = AgentNavigation.simulateTravel(r.path, 8.0, 110.125, -16.8, 40, g);
+        double moved = AgentNavigation.simulateTravel(r.path, 8.0, 110.0, -16.8, 40, g);
         check(moved > 5, "snow-layer follower must walk more than a jitter: " + moved);
-        // Cell (8,-16) is x[8,9) z[-16,-15); a 1-layer snow stand at y+0.125 is already on the waypoint.
-        check(AgentNavigation.reachedWaypoint(8.4, 110.125, -15.6, new int[]{8, 110, -16, AgentPathfinder.WALK}, 110.125),
-                "first snow waypoint is reachable at y+0.125");
-        check(!AgentNavigation.reachedWaypoint(8.4, 110.125, -18.5, new int[]{8, 110, -16, AgentPathfinder.WALK}, 110.125),
+        // Cell (8,-16) is x[8,9) z[-16,-15); feet at y on 1-layer snow is already on the waypoint.
+        check(AgentNavigation.reachedWaypoint(8.4, 110.0, -15.6, new int[]{8, 110, -16, AgentPathfinder.WALK}, g.standY(8, 110, -16)),
+                "first snow waypoint is reachable at y");
+        check(!AgentNavigation.reachedWaypoint(8.4, 110.0, -18.5, new int[]{8, 110, -16, AgentPathfinder.WALK}, 110.0),
                 "far XZ is not a reached snow waypoint");
     }
 

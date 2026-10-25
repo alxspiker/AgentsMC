@@ -55,7 +55,7 @@ final class AgentPathfinder {
         default String name(int x, int y, int z) { return "air"; }
         /** Collision height of a thin surface in this cell (snow/carpet/bottom slab), else 0. */
         default double surface(int x, int y, int z) { return 0; }
-        /** Feet Y while standing in cell (x,y,z). Snow layers sit at y+0.125, carpets y+0.0625, bottom slabs y+0.5. */
+        /** Feet Y while standing in cell (x,y,z). Snow layers sit at y+(layers-1)/8, carpets y+0.0625, bottom slabs y+0.5. */
         default double standY(int x, int y, int z) {
             double s = surface(x, y, z);
             return (s > 0 && s < 0.999) ? y + s : y;
@@ -251,7 +251,7 @@ final class AgentPathfinder {
      */
     static boolean thinPassable(String raw, int snowLayers, boolean bottomSlab) {
         String n = bare(raw);
-        if (n.equals("snow")) return snowLayers > 0 && snowLayers < 8;
+        if (n.equals("snow")) return snowLayers > 0 && snowLayers <= 8;
         if (carpetName(n)) return true;
         if (slabName(n)) return bottomSlab;
         return partialName(n) > 0;
@@ -260,13 +260,15 @@ final class AgentPathfinder {
         if (block == null) return false;
         return thinPassable(block.getType().name(), snowLayersOf(block), bottomSlabOf(block));
     }
-    /** Collision height in the cell. 1-layer snow = 0.125, carpet = 0.0625, bottom slab = 0.5, full block = 1. */
+    /** Collision height in the cell. Snow = (layers-1)/8 (1 layer = 0), carpet = 0.0625, bottom slab = 0.5, full block = 1. */
     static double surfaceHeight(String raw, int snowLayers, boolean bottomSlab) {
         String n = bare(raw);
         if (n.equals("snow")) {
-            int layers = snowLayers < 1 ? 1 : snowLayers;
-            if (layers >= 8) return 1;
-            return layers * 0.125;
+            // Vanilla SnowLayerBlock collision is (layers-1)/8: 1 layer has NO collision
+            // (feet stay at y), 8 layers = 0.875. 0.7.3: was layers/8, so every 1-layer
+            // snow waypoint expected feet at y+0.125 and arrival never fired (per-block stutter).
+            int layers = snowLayers < 1 ? 1 : Math.min(8, snowLayers);
+            return (layers - 1) * 0.125;
         }
         if (carpetName(n)) return 0.0625;
         if (slabName(n)) return bottomSlab ? 0.5 : 1;
