@@ -1,5 +1,11 @@
 # Notes announced as plugin.updated for the matching plugin.yml version only.
 # Never backfill older versions; agents receive the currently running entry.
+0.7.1:
+  changes:
+    - /agentsmc bridge status and the post-link message show the server PIN and the players' MCP connector URL (<bridge>/api/mcp/<PIN>) when the bridge reports pin/connectUrl; otherwise they point to the Servers dashboard
+    - link/unlink help and token-revoked messages name the configured bridge url instead of always the default site
+  actionsAdded: []
+  actionsChanged: []
 0.7.0:
   changes:
     - public release - any server can join the AgentsMC bridge; /agentsmc link <code> claims a link code from the Servers dashboard and stores this server's id and token in bridge.yml

@@ -69,6 +69,9 @@ final class AgentBridge implements AutoCloseable {
     private volatile int lastHttpStatus;
     private volatile String lastHttpError = "none";
     private volatile String lastHeartbeatOk = "never";
+    /** Server PIN / MCP connect URL, if the bridge reports them in poll responses ({@code pin}, {@code connectUrl}). */
+    volatile String serverPin = "";
+    volatile String connectUrl = "";
     private long lastTelemetryAt;
     private final Map<String,AgentViewerDelta> viewerDeltas=new java.util.HashMap<>();
     private final Map<String,AgentOutboundBackoff> viewerBackoff=new java.util.HashMap<>();
@@ -155,7 +158,7 @@ final class AgentBridge implements AutoCloseable {
             plugin.getLogger().info("bridge.yml enabled from AGENTSMC_SERVER_TOKEN");
         }
         if (!settings.enabled) {
-            status = "disabled: not linked. Get a link code from the Servers dashboard at " + DEFAULT_URL + " and run /agentsmc link <code>";
+            status = "disabled: not linked. Get a link code from the Servers dashboard at " + settings.url + " and run /agentsmc link <code>";
             worker.shutdown();
             plugin.getLogger().info(status);
             return;
@@ -205,6 +208,9 @@ final class AgentBridge implements AutoCloseable {
                     || !poll.has("agentIds") || !poll.get("agentIds").isJsonArray()
                     || !poll.has("viewers") || !poll.get("viewers").isJsonArray())
                 throw new IllegalStateException("Server poll requires registrations, actions, agentIds, and viewers arrays");
+            String pinNow = AgentsMC.pinOf(poll), connectNow = AgentsMC.connectUrlOf(poll);
+            if (!pinNow.isEmpty()) serverPin = pinNow;
+            if (!connectNow.isEmpty()) connectUrl = connectNow;
             catalogSupported = false;
             chatLogSupported = false;
             boolean eventsNow = false;
@@ -725,7 +731,7 @@ final class AgentBridge implements AutoCloseable {
             status = REVOKED_STATUS;
             if (!revokedWarned) {
                 revokedWarned = true;
-                plugin.getLogger().severe(REVOKED_MESSAGE);
+                plugin.getLogger().severe(revokedMessage(origin == null ? DEFAULT_URL : origin.toString()));
             }
         } else if (response.statusCode() >= 200 && response.statusCode() < 300) revokedWarned = false;
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -770,8 +776,10 @@ final class AgentBridge implements AutoCloseable {
     /** Legacy 64-char tokens and newer prefixed tokens (e.g. amcs_...). Never logged in full. */
     static final String TOKEN_PATTERN = "[A-Za-z0-9_.~-]{20,256}";
     static final String REVOKED_STATUS = "unauthorized: server token unknown or revoked - run /agentsmc link <code>";
-    static final String REVOKED_MESSAGE = "AgentsMC bridge rejected this server's token (401 token_revoked). Get a new link code from the Servers dashboard at "
-            + DEFAULT_URL + " and run /agentsmc link <code>.";
+    static String revokedMessage(String url) {
+        return "AgentsMC bridge rejected this server's token (401 token_revoked). Get a new link code from the Servers dashboard at "
+                + url + " and run /agentsmc link <code>.";
+    }
 
     static boolean tokenOk(String token) {
         return token != null && token.matches(TOKEN_PATTERN);

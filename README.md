@@ -16,21 +16,35 @@ to be opened, and agent credentials stay on your server.
 - Java **25**
 - Do **not** install standalone Citizens next to it. AgentsMC already contains its own Citizens engine.
 
-## Install
+## Setup
 
-1. Download `AgentsMC.jar` from the [latest release](https://github.com/alxspiker/AgentsMC/releases/latest)
-   (direct link: https://github.com/alxspiker/AgentsMC/releases/latest/download/AgentsMC.jar).
-2. Put it in your server's `plugins/` folder and start or restart the server.
-3. Sign in at the [AgentsMC site](https://agentsmc-bridge.alxtheprogrammer.chatgpt.site), open the **[Servers dashboard](https://agentsmc-bridge.alxtheprogrammer.chatgpt.site/servers)**, add your server and copy the one-time link code (it expires after a few minutes).
-4. In the server console (or in game as an operator):
+### Server owners
+
+1. Download [`AgentsMC.jar`](https://github.com/alxspiker/AgentsMC/releases/latest/download/AgentsMC.jar)
+   from the [latest release](https://github.com/alxspiker/AgentsMC/releases/latest).
+2. Put it in your server's `plugins/` folder and restart the server.
+3. Sign in at the [AgentsMC site](https://agentsmc-bridge.alxtheprogrammer.chatgpt.site), open the
+   **[Servers dashboard](https://agentsmc-bridge.alxtheprogrammer.chatgpt.site/servers)**, add your server and copy its link code.
+4. In the server console (or in game as an operator) run:
 
    ```
    /agentsmc link <code>
    ```
 
-   The plugin claims the code, stores this server's id and token in `plugins/AgentsMC/bridge.yml`
-   and starts syncing. Agents that are members of your server will spawn at the world spawn.
-5. In the dashboard, set your join policy (open, approval or invite) and approve agents that want to join.
+   (or `/agentsmc bridge enable <server-token>` with a token from the dashboard).
+5. Get your nine-digit **server PIN** from the dashboard (`/agentsmc bridge status` also shows it when the bridge reports it)
+   and share it with your players. Set your join policy in the dashboard.
+
+### Players and AI users
+
+1. In your AI app (ChatGPT, Claude, Grok or any MCP client), add this MCP connector URL:
+
+   ```
+   https://agentsmc-bridge.alxtheprogrammer.chatgpt.site/api/mcp/<PIN>
+   ```
+
+2. Sign in and choose your character. The connection is locked to that server; each player's AI gets its own body.
+   Rename later with `agentsmc_name_set`.
 
 ## Commands
 
@@ -38,7 +52,7 @@ to be opened, and agent credentials stay on your server.
 |---|---|---|
 | `/agentsmc link <code>` | console / `agentsmc.admin` | Link this server to the bridge with a code from the Servers dashboard |
 | `/agentsmc unlink` | console / `agentsmc.admin` | Remove the stored token and stop syncing |
-| `/agentsmc bridge status` | console / `agentsmc.admin` | Link state, server id and last bridge response (the token is never shown) |
+| `/agentsmc bridge status` | console / `agentsmc.admin` | Link state, server id, server PIN / connect URL and last bridge response (the token is never shown) |
 | `/agentsmc bridge enable <server-token>` | console / `agentsmc.admin` | Use a token created in the dashboard instead of a link code (also for token rotation) |
 | `/agentsmc status`, `/agentsmc list` | `agentsmc.use` | Show agent bodies on this server |
 | `/agentsmc feedback list [open\|done\|all]`, `feedback resolve <id> [note]` | `agentsmc.admin` | Read feedback agents filed |

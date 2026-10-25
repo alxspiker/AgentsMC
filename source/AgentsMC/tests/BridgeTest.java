@@ -62,6 +62,15 @@ public final class BridgeTest {
         if (masked.contains("bbbb") || !masked.startsWith("amcs_")) throw new AssertionError("mask: " + masked);
         if (AgentBridge.maskToken(token).contains("AAAA")) throw new AssertionError("legacy mask");
         if (!AgentBridge.unauthorized(401, "{\"error\":\"token_revoked\"}")) throw new AssertionError("401 is unauthorized");
+        AgentsMC.ClaimResult pinned = AgentsMC.parseClaim(200, "{\"serverId\":\"srv-2\",\"serverToken\":\"amcs_" + "d".repeat(40) + "\",\"pin\":\"123 456 789\"}");
+        if (!"123456789".equals(pinned.pin)) throw new AssertionError("claim pin: " + pinned.pin);
+        if (!"https://bridge.example/api/mcp/123456789".equals(AgentsMC.connectLine("https://bridge.example/", pinned.pin, "")))
+            throw new AssertionError("connect line from pin");
+        if (!"https://x.example/api/mcp/1".equals(AgentsMC.connectLine("https://bridge.example", "9", "https://x.example/api/mcp/1")))
+            throw new AssertionError("connectUrl wins");
+        if (!AgentsMC.connectLine("https://bridge.example", "", "").isEmpty()) throw new AssertionError("no pin -> empty");
+        if (!AgentsMC.pinOf(com.google.gson.JsonParser.parseString("{\"server\":{\"pin\":\"987654321\"}}").getAsJsonObject()).equals("987654321"))
+            throw new AssertionError("nested pin");
         AgentsMC.ClaimResult claim = AgentsMC.parseClaim(200, "{\"serverId\":\"srv-1\",\"serverToken\":\"amcs_" + "c".repeat(40) + "\"}");
         if (!"srv-1".equals(claim.serverId) || !claim.token.startsWith("amcs_")) throw new AssertionError("claim parse");
         try { AgentsMC.parseClaim(404, "{\"error\":\"Link code expired or already used\"}"); throw new AssertionError("bad code must fail"); }

@@ -59,7 +59,7 @@ public final class SleepTest {
 
         AgentRespawn.Claim human = new AgentRespawn.Claim();
         human.player = true;
-        human.name = ".Haley1707";
+        human.name = ".ExamplePlayer";
         human.kind = "bed";
         human.world = "world";
         human.x = -10; human.y = 87; human.z = -55;
@@ -69,12 +69,12 @@ public final class SleepTest {
                 "human bed is claimed not mine: " + hv);
         @SuppressWarnings("unchecked")
         var by = (java.util.Map<String, Object>) hv.get("claimedBy");
-        check(Boolean.TRUE.equals(by.get("player")) && ".Haley1707".equals(by.get("name"))
+        check(Boolean.TRUE.equals(by.get("player")) && ".ExamplePlayer".equals(by.get("name"))
                 && !by.containsKey("agentId") && by.containsKey("uuid"),
                 "human claimedBy: " + by);
-        check(AgentRespawn.stealError(".Haley1707").contains(".Haley1707"), "steal names the player");
+        check(AgentRespawn.stealError(".ExamplePlayer").contains(".ExamplePlayer"), "steal names the player");
         check(AgentRespawn.stealError("").toLowerCase().contains("player"), "steal fallback mentions player");
-        check(AgentRespawn.fromHuman(".Haley1707", null, null, "bed") == null, "human claim needs spawn");
+        check(AgentRespawn.fromHuman(".ExamplePlayer", null, null, "bed") == null, "human claim needs spawn");
 
         check(AgentSurvivalActions.daytimeSleepNote(6000).contains("12:00 PM"),
                 "daytime sleep note uses the clock: " + AgentSurvivalActions.daytimeSleepNote(6000));
@@ -107,7 +107,7 @@ public final class SleepTest {
         // Bed orientation: FOOT + FACING is the HEAD; head input is unchanged (all four facings).
         check(java.util.Arrays.equals(AgentSleep.bedHead(-5, 87, -57, "NORTH", false), new int[]{-5, 87, -58}), "north foot->head");
         check(java.util.Arrays.equals(AgentSleep.bedHead(-5, 87, -57, "SOUTH", false), new int[]{-5, 87, -56}), "south foot->head");
-        check(java.util.Arrays.equals(AgentSleep.bedHead(-6, 87, -55, "EAST", false), new int[]{-5, 87, -55}), "east foot->head");
+        check(java.util.Arrays.equals(AgentSleep.bedHead(10, 64, 10, "EAST", false), new int[]{11, 64, 10}), "east foot->head");
         check(java.util.Arrays.equals(AgentSleep.bedHead(-9, 87, -57, "WEST", false), new int[]{-10, 87, -57}), "west foot->head");
         for (String f : new String[]{"NORTH", "SOUTH", "EAST", "WEST"})
             check(java.util.Arrays.equals(AgentSleep.bedHead(1, 2, 3, f, true), new int[]{1, 2, 3}), "head stays head " + f);
@@ -132,8 +132,8 @@ public final class SleepTest {
             check(up != null && !bedCells.contains(up[0] + "," + up[2]), "step-up spot not on bed " + f);
         }
         check(AgentSleep.wakeSpot(0, 64, 0, "NORTH", c -> false) == null, "no spot -> null (fallback on top of bed)");
-        check("0.7.0".equals(version), "plugin.yml version: " + version);
-        System.out.println("PASS: sleep/respawn encode, bed claims visible, human player claims, steal refused, death-camp, voluntary home, daytime sleep note, pose wake, bed head/facing x4, dawn auto-wake, wake beside bed, 0.7.0");
+        check("0.7.1".equals(version), "plugin.yml version: " + version);
+        System.out.println("PASS: sleep/respawn encode, bed claims visible, human player claims, steal refused, death-camp, voluntary home, daytime sleep note, pose wake, bed head/facing x4, dawn auto-wake, wake beside bed, 0.7.1");
     }
 
     private static void check(boolean ok, String message) {

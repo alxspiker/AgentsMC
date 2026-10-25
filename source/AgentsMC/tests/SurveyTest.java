@@ -26,7 +26,7 @@ public final class SurveyTest {
 
         if (!AgentSurvey.nearbyForSurvey(10, 0, -12, 8) || AgentSurvey.nearbyForSurvey(17, 0, 0, 8) || AgentSurvey.nearbyForSurvey(0, 20, 0, 8))
             throw new AssertionError("fb-22: survey players window is radius+8 horizontal, 16 vertical");
-        System.out.println("PASS: survey enclosed room/door/objects, headroom grid, incomplete excavation warning, 1-block hole is not an exit, chest behind wall stays out, unknown ≠ blocked, worldmap persist+route, 0.7.0");
+        System.out.println("PASS: survey enclosed room/door/objects, headroom grid, incomplete excavation warning, 1-block hole is not an exit, chest behind wall stays out, unknown ≠ blocked, worldmap persist+route, 0.7.1");
     }
 
     /** 5x5 stone room, spruce door to grass, chest + crafting table inside. */

@@ -344,7 +344,7 @@ public final class AgentsMC extends Citizens {
                 sender.sendMessage("[AgentsMC] " + JSON.toJson(execute(input)));
             } else if (args.length >= 1 && args[0].equals("link")) {
                 requireAdmin(sender);
-                require(args.length == 2, "/agentsmc link <code>  (get a code from the Servers dashboard at " + AgentBridge.DEFAULT_URL + ")");
+                require(args.length == 2, "/agentsmc link <code>  (get a code from the Servers dashboard at " + bridgeUrl() + ")");
                 linkWithCode(sender, args[1]);
             } else if (args.length >= 1 && args[0].equals("unlink")) {
                 requireAdmin(sender);
@@ -431,6 +431,40 @@ public final class AgentsMC extends Citizens {
                 + " url=" + bridgeUrl() + " token=" + (hasToken ? "set (hidden)" : "none"));
         sender.sendMessage("[AgentsMC] bridge=" + (bridge == null ? "not initialized" : bridge.status()));
         if (!hasToken) sender.sendMessage("[AgentsMC] Not linked: get a code from the Servers dashboard at " + bridgeUrl() + " and run /agentsmc link <code>");
+        else {
+            String pin = bridge != null && !bridge.serverPin.isBlank() ? bridge.serverPin : config.getString("server-pin", "");
+            String cu = bridge != null && !bridge.connectUrl.isBlank() ? bridge.connectUrl : config.getString("connect-url", "");
+            String line = connectLine(bridgeUrl(), pin, cu);
+            sender.sendMessage("[AgentsMC] " + (line.isEmpty()
+                    ? "Server PIN: not reported by the bridge; find it in the Servers dashboard at " + bridgeUrl() + " (players connect with " + bridgeUrl() + "/api/mcp/<PIN>)"
+                    : "Server PIN: " + (pin == null || pin.isBlank() ? "(see URL)" : pin) + ". Players connect their AI with: " + line));
+        }
+    }
+
+    /** Server PIN from a bridge response: pin, serverPin, or server.pin. Digits only (spaces/dashes stripped). */
+    static String pinOf(JsonObject o) {
+        if (o == null) return "";
+        String v = str(o, "pin", str(o, "serverPin", ""));
+        if (v.isEmpty() && o.has("server") && o.get("server").isJsonObject()) v = str(o.getAsJsonObject("server"), "pin", "");
+        v = v.replaceAll("[\\s-]", "");
+        return v.matches("[0-9]{4,16}") ? v : "";
+    }
+
+    /** MCP connect URL from a bridge response: connectUrl, mcpUrl, or server.connectUrl. HTTPS only. */
+    static String connectUrlOf(JsonObject o) {
+        if (o == null) return "";
+        String v = str(o, "connectUrl", str(o, "mcpUrl", ""));
+        if (v.isEmpty() && o.has("server") && o.get("server").isJsonObject()) v = str(o.getAsJsonObject("server"), "connectUrl", "");
+        return v.startsWith("https://") && !v.contains(" ") ? v : "";
+    }
+
+    /** Players' MCP connector URL: explicit connectUrl, else base + /api/mcp/ + pin, else "". */
+    static String connectLine(String base, String pin, String connectUrl) {
+        if (connectUrl != null && !connectUrl.isBlank()) return connectUrl.trim();
+        if (pin == null || pin.isBlank()) return "";
+        String b = base == null ? AgentBridge.DEFAULT_URL : base.trim();
+        while (b.endsWith("/")) b = b.substring(0, b.length() - 1);
+        return b + "/api/mcp/" + pin.trim();
     }
 
     /** POST /api/server/claim off the main thread, then store serverId + token and start the poller. */
@@ -463,7 +497,12 @@ public final class AgentsMC extends Citizens {
                 Bukkit.getScheduler().runTask(this, () -> {
                     try {
                         enableBridge(claim.token, claim.serverId);
+                        saveConnectInfo(claim.pin, claim.connectUrl);
                         sender.sendMessage("[AgentsMC] linked! serverId=" + claim.serverId + ". Agents added to this server in the dashboard will spawn at world spawn.");
+                        String line = connectLine(url, claim.pin, claim.connectUrl);
+                        sender.sendMessage("[AgentsMC] " + (line.isEmpty()
+                                ? "Find your server PIN in the Servers dashboard at " + url + ". Players connect their AI with: " + url + "/api/mcp/<PIN>"
+                                : "Players connect their AI with: " + line));
                     } catch (RuntimeException e) { sender.sendMessage("[AgentsMC] link failed: " + e.getMessage()); }
                 });
                 return;
@@ -474,7 +513,7 @@ public final class AgentsMC extends Citizens {
         });
     }
 
-    static final class ClaimResult { String serverId = ""; String token = ""; }
+    static final class ClaimResult { String serverId = ""; String token = ""; String pin = ""; String connectUrl = ""; }
 
     /** Parses the claim response. Accepts {serverId, serverToken} (also token / server.id variants). */
     static ClaimResult parseClaim(int status, String body) {
@@ -493,6 +532,8 @@ public final class AgentsMC extends Citizens {
         if (r.serverId.isEmpty() && json.has("server") && json.get("server").isJsonObject())
             r.serverId = str(json.getAsJsonObject("server"), "id", "");
         if (!AgentBridge.tokenOk(r.token)) throw new IllegalStateException("bridge returned no usable server token");
+        r.pin = pinOf(json);
+        r.connectUrl = connectUrlOf(json);
         return r;
     }
 
@@ -500,11 +541,21 @@ public final class AgentsMC extends Citizens {
         return o.has(key) && o.get(key).isJsonPrimitive() ? o.get(key).getAsString().trim() : fallback;
     }
 
+    /** Stores the shareable PIN / connect URL (not secrets) in bridge.yml for /agentsmc bridge status. */
+    void saveConnectInfo(String pin, String connectUrl) {
+        org.bukkit.configuration.file.YamlConfiguration config = loadBridgeConfig();
+        config.set("server-pin", pin == null || pin.isBlank() ? null : pin);
+        config.set("connect-url", connectUrl == null || connectUrl.isBlank() ? null : connectUrl);
+        try { config.save(bridgeFile()); } catch (java.io.IOException e) { getLogger().warning("Could not save server PIN to bridge.yml: " + e.getMessage()); }
+    }
+
     void unlinkBridge() {
         org.bukkit.configuration.file.YamlConfiguration config = loadBridgeConfig();
         config.set("enabled", false);
         config.set("server-token", "");
         config.set("server-id", null);
+        config.set("server-pin", null);
+        config.set("connect-url", null);
         try { config.save(bridgeFile()); }
         catch (java.io.IOException e) { throw new IllegalStateException("Could not write bridge.yml: " + e.getMessage()); }
         if (bridge != null) { try { bridge.close(); } catch (Exception ignored) {} bridge = null; }

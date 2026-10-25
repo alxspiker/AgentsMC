@@ -293,11 +293,13 @@ public final class AgentUiTest {
         check(wake != null && wake.actionsChanged.contains("inspect_container")
                 && wake.changes.stream().anyMatch(s -> s.contains("dawn")),
                 "changelog 0.6.80: " + wake);
+        PluginChangelog.Notes pin = PluginChangelog.notes("0.7.1");
+        check(pin != null && pin.changes.stream().anyMatch(s -> s.contains("PIN")), "changelog 0.7.1: " + pin);
         PluginChangelog.Notes pub = PluginChangelog.notes("0.7.0");
         check(pub != null && pub.changes.stream().anyMatch(s -> s.contains("/agentsmc link")),
                 "changelog 0.7.0: " + pub);
 
-        System.out.println("PASS: panel html bundled, under 512KiB, debounce, no credentials, 0.7.0");
+        System.out.println("PASS: panel html bundled, under 512KiB, debounce, no credentials, 0.7.1");
     }
 
     static void check(boolean ok, String message) {

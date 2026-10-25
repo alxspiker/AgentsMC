@@ -41,8 +41,8 @@ public final class SignTest {
         AgentSigns.requireEditable(false);
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.0".equals(version), "plugin.yml version: " + version);
-        System.out.println("PASS: sign text view, front/back, edit side, waxed refuse, 0.7.0");
+        check("0.7.1".equals(version), "plugin.yml version: " + version);
+        System.out.println("PASS: sign text view, front/back, edit side, waxed refuse, 0.7.1");
     }
 
     private static void check(boolean ok, String message) {
