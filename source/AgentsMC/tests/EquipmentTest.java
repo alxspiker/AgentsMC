@@ -80,8 +80,8 @@ public final class EquipmentTest {
         check(String.valueOf(inv.get("description")).toLowerCase().contains("offhand"), "inventory describes armor/offhand");
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.1".equals(version), "plugin.yml version: " + version);
-        System.out.println("PASS: equip auto-wear armor/elytra/pumpkin/offhand, unequip, slots 36-40, keep worn on death, 0.7.1");
+        check("0.7.2".equals(version), "plugin.yml version: " + version);
+        System.out.println("PASS: equip auto-wear armor/elytra/pumpkin/offhand, unequip, slots 36-40, keep worn on death, 0.7.2");
     }
 
     private static void check(boolean ok, String message) {

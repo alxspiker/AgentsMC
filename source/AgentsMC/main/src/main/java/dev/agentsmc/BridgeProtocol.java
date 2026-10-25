@@ -48,6 +48,9 @@ final class BridgeProtocol {
         return input;
     }
 
+    /** 0.7.2: an action-result POST answered with 404 is dropped instead of retried every poll. */
+    static boolean dropActionResult(String failure) { return failure != null && failure.contains(" returned HTTP 404"); }
+
     static boolean removedTarget(int status, String path, String body) {
         if (status != 404 || !(path.equals("/api/server/agent") || path.startsWith("/api/server/actions/") || path.startsWith("/api/server/viewer/"))) return false;
         JsonObject error = com.google.gson.JsonParser.parseString(body).getAsJsonObject();

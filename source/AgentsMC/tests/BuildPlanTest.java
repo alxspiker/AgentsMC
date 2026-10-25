@@ -58,7 +58,7 @@ public final class BuildPlanTest {
         check(AgentActionCatalog.advertised("build_plan") && AgentActionCatalog.advertised("preflight"),
                 "build_plan advertised");
         check(AgentActionProgram.concurrentSafeAction("build_plan"), "build_plan is concurrent-safe");
-        System.out.println("PASS: build_plan parse/mirror/verify/aside, torch support refuse, 0.7.1");
+        System.out.println("PASS: build_plan parse/mirror/verify/aside, torch support refuse, 0.7.2");
     }
 
     private static void check(boolean ok, String message) {

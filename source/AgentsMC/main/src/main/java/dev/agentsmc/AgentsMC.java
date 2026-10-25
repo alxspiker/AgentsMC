@@ -97,6 +97,7 @@ public final class AgentsMC extends Citizens {
             Objects.requireNonNull(CitizensAPI.getNPCRegistry(), "Citizens registry did not initialize");
             ready = true;
             AgentFeedback.attach(new java.io.File(getDataFolder(), "feedback.json").toPath());
+            AgentOp.attach(new java.io.File(getDataFolder(), "ops.yml"));
             AgentRespawn.loadHumans();
             restoreSpawnedAgents();
             for(NPC body:CitizensAPI.getNPCRegistry())if(body.data().has(AGENT_ID)){configureBody(body);AgentRestart.idle(body);}
@@ -301,6 +302,35 @@ public final class AgentsMC extends Citizens {
             }
             return true;
         }
+        if (args.length >= 1 && (args[0].equals("op") || args[0].equals("deop") || args[0].equals("ops"))) {
+            if (sender instanceof Player && !sender.isOp()) {
+                sender.sendMessage("[AgentsMC] /agentsmc op, deop and ops are console-only (or server operators)");
+                return true;
+            }
+            try {
+                require(ready, "AgentsMC has not finished loading");
+                if (args[0].equals("ops")) {
+                    List<String> ops = AgentOp.ops();
+                    sender.sendMessage("[AgentsMC] op agents (" + ops.size() + "): " + (ops.isEmpty() ? "none" : String.join(", ", ops)));
+                } else {
+                    require(args.length == 2, "/agentsmc " + args[0] + " <agent name>");
+                    NPC target = AgentOp.agentByName(args[1]);
+                    String agentId = target != null ? AgentErrors.text(target.data().get(AGENT_ID)) : args[1].toLowerCase(java.util.Locale.ROOT);
+                    if (args[0].equals("op")) {
+                        require(target != null, "Unknown agent: " + args[1]);
+                        boolean changed = AgentOp.grant(agentId);
+                        sender.sendMessage("[AgentsMC] " + (changed ? "opped agent " : "agent already opped: ") + agentId);
+                    } else {
+                        boolean changed = AgentOp.revoke(agentId);
+                        sender.sendMessage("[AgentsMC] " + (changed ? "deopped agent " : "agent was not opped: ") + agentId);
+                    }
+                    getLogger().info("[op] " + sender.getName() + " ran /agentsmc " + args[0] + " " + agentId + "; op agents=" + AgentOp.ops());
+                }
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                sender.sendMessage("[AgentsMC] " + JSON.toJson(result("ok", false, "error", AgentErrors.message(e, null))));
+            }
+            return true;
+        }
         if (args.length >= 1 && (args[0].equals("hurt") || args[0].equals("hunger"))) {
             if (sender instanceof Player) {
                 sender.sendMessage("[AgentsMC] /agentsmc hurt and hunger are console-only");
@@ -379,6 +409,7 @@ public final class AgentsMC extends Citizens {
                 sender.sendMessage("[AgentsMC] /agentsmc link <code> | unlink | bridge status | bridge enable <server-token>");
                 sender.sendMessage("[AgentsMC] /agentsmc feedback list [open|done|all] | feedback resolve <id> [note]");
                 sender.sendMessage("[AgentsMC] console: /agentsmc hurt <agentId> <amount> | hunger <agentId> <food>");
+                sender.sendMessage("[AgentsMC] console: /agentsmc op <agent> | deop <agent> | ops");
                 sender.sendMessage("[AgentsMC] actions=" + String.join(",", statusActions()));
             }
         } catch (IllegalArgumentException | IllegalStateException | JsonParseException e) {
@@ -864,6 +895,7 @@ public final class AgentsMC extends Citizens {
                     "note", "Save this credential privately; it controls only this body and is shown only at creation");
         }
         require(npc != null, "Unknown agent: " + id);
+        if (action.equals("op")) return AgentOp.execute(this, npc, input);
         if (AgentFeedback.handles(action)) {
             Map<String, Object> filed = AgentFeedback.execute(npc, input);
             filed.put("ok", true);

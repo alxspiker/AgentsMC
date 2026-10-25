@@ -17,6 +17,6 @@ public final class FurnaceLogTest {
         for (int i = 0; i < 30; i++) AgentFurnaceLog.record(k, "hopper", "hopper_out", "IRON_INGOT", 1, 10L + i);
         if (AgentFurnaceLog.history(k).size() != AgentFurnaceLog.KEEP) throw new AssertionError("cap");
         if (!AgentFurnaceLog.history(AgentFurnaceLog.key("world", 0, 0, 0)).isEmpty()) throw new AssertionError("other furnace");
-        System.out.println("PASS: furnace touch log (agent smelt/fuel, extract attribution, hopper, cap 12), 0.7.1");
+        System.out.println("PASS: furnace touch log (agent smelt/fuel, extract attribution, hopper, cap 12), 0.7.2");
     }
 }

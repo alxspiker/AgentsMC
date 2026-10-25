@@ -68,6 +68,9 @@ final class AgentBridge implements AutoCloseable {
     private volatile boolean failed;
     private volatile int lastHttpStatus;
     private volatile String lastHttpError = "none";
+    /** 0.7.2: action ids whose result POST got HTTP 404; never re-posted. Bounded. */
+    private final java.util.Set<String> droppedResults = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+    private void rememberDropped(String id) { if (droppedResults.size() > 4096) droppedResults.clear(); droppedResults.add(id); }
     private volatile String lastHeartbeatOk = "never";
     /** Server PIN / MCP connect URL, if the bridge reports them in poll responses ({@code pin}, {@code connectUrl}). */
     volatile String serverPin = "";
@@ -438,9 +441,18 @@ final class AgentBridge implements AutoCloseable {
         AgentEvents.emitAction(agentId, id, action, result);
         JsonObject body = new JsonObject();
         body.add("result", result);
-        try { request("POST", "/api/server/actions/" + id, body); }
+        if (droppedResults.contains(id)) return;
+        try {
+            request("POST", "/api/server/actions/" + id, body);
+            lastHttpError = "none";
+        }
         catch (RemovedTarget removed) { plugin.getLogger().info("Queued action was cancelled or already acknowledged; it will not be replayed"); }
-        catch (RuntimeException post) { plugin.getLogger().warning("Action result post failed for " + id + ": " + post.getMessage() + "; will retry"); }
+        catch (RuntimeException post) {
+            if (BridgeProtocol.dropActionResult(post.getMessage())) {
+                rememberDropped(id);
+                plugin.getLogger().warning("Action result post for " + id + " got HTTP 404; the bridge no longer knows this action, not retrying");
+            } else plugin.getLogger().warning("Action result post failed for " + id + ": " + post.getMessage() + "; will retry");
+        }
     }
 
     /** Log a poll/heartbeat failure and keep the HTTPS worker running so the next cycle retries. */

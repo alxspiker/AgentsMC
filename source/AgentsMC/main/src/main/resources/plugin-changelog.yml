@@ -1,5 +1,15 @@
 # Notes announced as plugin.updated for the matching plugin.yml version only.
 # Never backfill older versions; agents receive the currently running entry.
+0.7.2:
+  changes:
+    - new op action for console-opped agents (/agentsmc op <agent>, deop <agent>, ops; stored in plugins/AgentsMC/ops.yml). command is one of give, tp, heal, feed, gamemode, time, weather, difficulty, setspawn, clearinv, kill, summon, killmobs, fill, op, deop, ban, pardon, kick, restart with a space-separated args string; non-opped agents get ok:false with the console command to run
+    - op targets resolve online players first, then agents by id or display name (Citizens bodies); op/deop/ban/pardon/kick only apply to real players; fill is capped at 32768 blocks and killmobs at radius 64 (hostile only); there is no stop and no raw console command
+    - op restart uses the Spigot restart only when spigot.yml settings.restart-script points at an existing file; otherwise it returns "restart is not available on this host"
+    - every op action is logged to the server console with agent, command, args and result
+    - a successful action-result POST clears the bridge lastError; an action result answered with HTTP 404 is dropped instead of retried every poll
+  actionsAdded:
+    - op
+  actionsChanged: []
 0.7.1:
   changes:
     - /agentsmc bridge status and the post-link message show the server PIN and the players' MCP connector URL (<bridge>/api/mcp/<PIN>) when the bridge reports pin/connectUrl; otherwise they point to the Servers dashboard

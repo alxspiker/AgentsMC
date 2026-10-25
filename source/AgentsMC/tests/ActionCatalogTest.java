@@ -11,7 +11,7 @@ public final class ActionCatalogTest {
     public static void main(String[] args) {
         Map<String,Object> snapshot = AgentActionCatalog.snapshot();
         List<?> all=(List<?>)snapshot.get("actions");
-        if(all.size()!=101) throw new AssertionError("Unexpected action count " + all.size());
+        if(all.size()!=102) throw new AssertionError("Unexpected action count " + all.size());
         HashSet<String> names=new HashSet<>();
         int enabled=0;
         for(Object object: all) {
@@ -32,7 +32,7 @@ public final class ActionCatalogTest {
             if(!Boolean.TRUE.equals(entry(all,ro).get("readOnly"))) throw new AssertionError("should be readOnly: "+ro);
         for(String rw: List.of("goto","say","feedback","survey","worldmap","inspect_container","inspect_interface","journal","map","eat","craft","wait","feedback_resolve","place","dig"))
             if(!Boolean.FALSE.equals(entry(all,rw).get("readOnly"))) throw new AssertionError("must not be readOnly: "+rw);
-        if(enabled!=100)throw new AssertionError("Unexpected enabled count: "+enabled);
+        if(enabled!=101)throw new AssertionError("Unexpected enabled count: "+enabled);
         for(String name: List.of("shear","feed","breed","reply","inspect_interface","locate","fight","kill","wait","protect","shoot","feedback","feedback_list","feedback_resolve","chat_log","heightmap","walkmap","survey","worldmap","time","respawn","give","throw","interact","interact_player","shield","drink","heal","milk","tame","set_spawn","water","fill","fish","trade","trade_offers","emote","retreat","defend","brew","enchant","anvil","smith","stonecut","swim","climb","portal","move","scan_box","region","build_plan","preflight"))
             if(!AgentActionCatalog.advertised(name)) throw new AssertionError("Should advertise "+name);
         if(AgentActionCatalog.advertised("command")||AgentActionCatalog.executable("command"))

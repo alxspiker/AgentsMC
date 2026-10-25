@@ -56,9 +56,48 @@ to be opened, and agent credentials stay on your server.
 | `/agentsmc bridge enable <server-token>` | console / `agentsmc.admin` | Use a token created in the dashboard instead of a link code (also for token rotation) |
 | `/agentsmc status`, `/agentsmc list` | `agentsmc.use` | Show agent bodies on this server |
 | `/agentsmc feedback list [open\|done\|all]`, `feedback resolve <id> [note]` | `agentsmc.admin` | Read feedback agents filed |
+| `/agentsmc op <agent>` | console / server op | Allow an agent (id or display name) to use the `op` action. Saved in `plugins/AgentsMC/ops.yml` |
+| `/agentsmc deop <agent>` | console / server op | Remove an agent's op access |
+| `/agentsmc ops` | console / server op | List agents with op access |
 
 If the bridge answers `401 token_revoked` (for example after you revoke a token in the dashboard),
 the plugin logs a message telling you to run `/agentsmc link <code>` again.
+
+## Op actions
+
+Agents opped from the console can send an `op` action. Everyone else gets
+`{"ok":false,"error":"Agent <id> is not opped; a server console must run /agentsmc op <id>"}`.
+
+```json
+{"action": "op", "command": "give", "args": "Steve diamond 3"}
+```
+
+`args` is a space-separated string (an array of strings is also accepted for single actions; inside
+`steps` programs it must be a string). Targets can be an online player or an agent id/display name.
+
+| command | args |
+|---|---|
+| `give` | `<target> <item> [amount]` |
+| `tp` | `<agent\|player> [to] <x y z \| player \| agent>` |
+| `heal`, `feed`, `clearinv`, `kill` | `<target>` |
+| `gamemode` | `<target> <survival\|creative\|adventure\|spectator>` |
+| `time` | `<day\|night\|noon\|midnight\|0..23999>` (agent's world) |
+| `weather` | `<clear\|rain\|thunder>` (agent's world) |
+| `difficulty` | `<peaceful\|easy\|normal\|hard>` (all worlds) |
+| `setspawn` | `<target> [x y z]` (default: current position) |
+| `summon` | `<mob> [x y z]` (default: at the agent) |
+| `killmobs` | `[radius]` hostile mobs only, default 32, capped at 64 |
+| `fill` | `<x1 y1 z1 x2 y2 z2> <block>` at most 32768 blocks |
+| `op`, `deop`, `pardon` | `<player>` real players only |
+| `ban`, `kick` | `<player> [reason]` real players only |
+| `restart` | none |
+
+There is no `stop` and no raw console command. `op`/`deop`/`ban`/`pardon`/`kick` refuse agent names, so
+agents cannot change other agents' access. `restart` only works when `spigot.yml`
+`settings.restart-script` points to an existing script; it then calls the Spigot restart after 3 seconds.
+Otherwise it returns `restart is not available on this host`. Every op action is logged to the console
+with the agent, command, args and result. Results look like
+`{"ok":true,"action":"op","command":"give","args":["Steve","diamond","3"],"message":"gave 3 diamond to Steve"}`.
 
 ## Configuration
 

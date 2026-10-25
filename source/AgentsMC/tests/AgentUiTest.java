@@ -295,11 +295,13 @@ public final class AgentUiTest {
                 "changelog 0.6.80: " + wake);
         PluginChangelog.Notes pin = PluginChangelog.notes("0.7.1");
         check(pin != null && pin.changes.stream().anyMatch(s -> s.contains("PIN")), "changelog 0.7.1: " + pin);
+        PluginChangelog.Notes ops = PluginChangelog.notes("0.7.2");
+        check(ops != null && ops.actionsAdded.contains("op") && ops.changes.stream().anyMatch(s -> s.contains("404")), "changelog 0.7.2: " + ops);
         PluginChangelog.Notes pub = PluginChangelog.notes("0.7.0");
         check(pub != null && pub.changes.stream().anyMatch(s -> s.contains("/agentsmc link")),
                 "changelog 0.7.0: " + pub);
 
-        System.out.println("PASS: panel html bundled, under 512KiB, debounce, no credentials, 0.7.1");
+        System.out.println("PASS: panel html bundled, under 512KiB, debounce, no credentials, 0.7.2");
     }
 
     static void check(boolean ok, String message) {

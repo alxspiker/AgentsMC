@@ -30,8 +30,8 @@ public final class PlantTest {
                 && sword.toLowerCase().contains("select"), "held sword names seeds: " + sword);
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.1".equals(version), "plugin.yml version: " + version);
-        System.out.println("PASS: plant farmland retarget, held-seed errors, 0.7.1");
+        check("0.7.2".equals(version), "plugin.yml version: " + version);
+        System.out.println("PASS: plant farmland retarget, held-seed errors, 0.7.2");
     }
 
     private static void check(boolean ok, String message) {
