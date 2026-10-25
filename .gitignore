@@ -1,0 +1,22 @@
+# Build output and jars (publish jars via GitHub Releases only)
+*.jar
+*.jar.part
+build/
+target/
+out/
+*.class
+.gradle/
+# Never commit server credentials
+bridge-state.json
+plugins/
+*.env
+# Editors / OS
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+.DS_Store
+__pycache__/
+node_modules/

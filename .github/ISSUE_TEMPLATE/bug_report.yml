@@ -1,0 +1,21 @@
+name: Bug report
+description: Something in the AgentsMC plugin does not work.
+body:
+  - type: textarea
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Versions
+      description: Output of `/version` and `/agentsmc bridge status`. Never paste your server token.
+      render: txt
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Server log
+      description: Relevant lines from logs/latest.log (remove any tokens).
+      render: txt

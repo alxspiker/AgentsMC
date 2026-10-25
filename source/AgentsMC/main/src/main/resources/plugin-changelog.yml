@@ -1,0 +1,527 @@
+# Notes announced as plugin.updated for the matching plugin.yml version only.
+# Never backfill older versions; agents receive the currently running entry.
+0.7.0:
+  changes:
+    - public release - any server can join the AgentsMC bridge; /agentsmc link <code> claims a link code from the Servers dashboard and stores this server's id and token in bridge.yml
+    - /agentsmc unlink removes the stored token; /agentsmc bridge status shows the server id and link state but never the token
+    - an unknown or revoked server token (HTTP 401 token_revoked) reports a clear "run /agentsmc link <code>" message instead of retry noise
+    - the jar no longer carries any bridge config or agent-name list; spawn defaults to the world spawn and the join message is configurable (join-message in bridge.yml, empty disables)
+    - server tokens of the new prefixed format are accepted and are masked in all logs
+  actionsAdded: []
+  actionsChanged: []
+0.6.80:
+  changes:
+    - fb-37 observe and observe.navigation report the body's live world (plus environment and worldChange); a portal, tp or respawn into another world clears the stale goto target with world_changed, and later steps in a program target the new world
+    - fb-38 use_portal (also portal, and usable as a steps program step) walks fully into the nearest nether/end portal block, waits inside for the world change with a timeout (default 20s) and reports world, environment and position; if vanilla does not move the body after ~4.5s the plugin sends it through (vanillaOnly:true disables that)
+    - fb-39/fb-40 snow layers, carpets, bottom slabs and other partial-height blocks are walkable floor at their real height; a +1 step from snow to snow no longer reads as a 1.125 hop that stalls the climb, and a jump that needs more than 1.25 of real lift is not planned
+    - fb-43 goto prefers ground-level routes near the start/target height over ridges, does not drop into enclosed 1-wide holes on the way to somewhere else, and climbs out of a 1-2 deep hole before planning or when it stalls
+    - sleeping bodies get up by themselves at dawn (or whenever beds stop working, outside 12542..23459 without thunder) and stand on a free cell beside the bed (FACING-aware, never inside a block); goto and other wake actions also step out beside the bed instead of standing up sunk into it
+    - a lying body is turned with the vanilla bed table (SOUTH 90, WEST 0, NORTH 270, EAST 180) so it no longer lies 90 degrees off when the client has no bed position
+    - fb-27 inspect_container on a furnace adds furnace (lit, burnTime, cookTime, cookTimeTotal) and history - the last 12 touches with who did it (agent smelt/fuel/transfer, player clicks and result extraction, hoppers, breaking); smelt notes the result waits in slot 2 for transfer withdraw
+  actionsAdded:
+    - use_portal
+  actionsChanged:
+    - portal
+    - goto
+    - observe
+    - sleep
+    - inspect_container
+    - smelt
+    - fuel
+0.6.78:
+  changes:
+    - sleeping bodies lie the right way in every bed - sleep, night_home and restore-after-restart always use the bed HEAD half (FOOT + FACING) and turn the body to the bed FACING, so a body restored from a foot-block position no longer renders reversed
+  actionsAdded: []
+  actionsChanged:
+    - sleep
+0.6.77:
+  changes:
+    - fb-20 eat sound loop - an agent body never keeps a raised hand after eating; any non-shield active item use is cleared after eat/auto-eat/drink and on every autonomy tick, so other players stop hearing a looping chewing sound
+    - fb-21 every catalog entry has a top-level readOnly boolean; true only for strictly observational actions (observe, inventory, scan, scan_entities, scan_box/region, heightmap, walkmap, inspect_block/entity/item, recipe, time, locate, trade_offers, chat_log, feedback_list); survey, worldmap, journal, inspect_container, inspect_interface (marks inbox read) and all writes are false
+    - fb-22 survey and walkmap wake a sleeping body first (like goto/move) instead of returning 0 cells, and survey returns nearby players/agents (players list) alongside labeled chest/sign objects
+  actionsAdded: []
+  actionsChanged:
+    - survey
+    - walkmap
+    - eat
+    - observe
+0.6.76:
+  changes:
+    - place refuses a wall torch/sign/ladder/button/lantern when the attachment neighbour is AIR (facing=south needs a solid north wall; no floor fallback that then forces a floating WALL_TORCH); build_plan/preflight inspects up to 64 planned cells, names support/aside/arrival exact|near|out, and verify flags missing or wrong-facing stairs (does not dig/place/auto-goto); sleep/goto/follow/move clear the leftover Citizens sleeping pose so other players do not keep seeing a lying body; observe.pose and observe.sleeping report it
+  actionsAdded:
+    - build_plan
+    - preflight
+  actionsChanged:
+    - place
+    - sleep
+    - observe
+    - goto
+0.6.75:
+  changes:
+    - goto jumps a 1-block face from farmland, dirt path, and soul sand (feet at y.875/.9375) instead of stalling as a fake 2-block climb; scan_box/region returns a bounded material grid (cap 4096) with ? for unloaded and optional A* reachable/blocked
+  actionsAdded:
+    - scan_box
+    - region
+  actionsChanged:
+    - goto
+0.6.74:
+  changes:
+    - harvest vacuums crop drops (no more 1-wheat shortfall); craft accepts count as amount; ticksUntilSunset is 0 after 6 PM; leftover arrived_near is re-checked; armed melee fights to health 6; climb-from-above is not climbed_past_path; sleep names the real bed blocker
+  actionsAdded: []
+  actionsChanged:
+    - harvest
+    - craft
+    - time
+    - goto
+    - fight
+    - sleep
+0.6.73:
+  changes:
+    - goto opens wooden doors and fence gates and closes them after the body passes (including spawn protection); villagers still do not slam those doors
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.72:
+  changes:
+    - inspect_block, observe.beds, and survey show a human player's vanilla bed or respawn-anchor claim (claimedBy.player); sleep and set_spawn refuse that bed too
+  actionsAdded: []
+  actionsChanged:
+    - inspect_block
+    - observe
+    - survey
+    - sleep
+    - set_spawn
+0.6.71:
+  changes:
+    - place text on an existing unwaxed sign edits it (no item consumed); side is front or back; waxed signs are refused
+  actionsAdded: []
+  actionsChanged:
+    - place
+0.6.70:
+  changes:
+    - place facing on a sign or torch is the front of the block; a wall sign facing east attaches to the west neighbour instead of becoming a standing sign
+  actionsAdded: []
+  actionsChanged:
+    - place
+0.6.69:
+  changes:
+    - inspect_block and survey read sign text (lines/text, plus back when written)
+    - plant accepts the farmland cell (or soul sand) and plants in the air above it; catalog says it plants the held seed (optional item/slot)
+  actionsAdded: []
+  actionsChanged:
+    - inspect_block
+    - survey
+    - plant
+0.6.68:
+  changes:
+    - sleep and set_spawn refuse a bed already claimed by another agent so a shared base does not steal respawns; inspect_block, observe.beds, and survey room objects report claimed/claimedBy/mine
+    - place accepts facing (north/south/east/west/up/down or forward/back/left/right) so beds, stairs, logs, pistons, doors, and boats point the requested way
+  actionsAdded: []
+  actionsChanged:
+    - sleep
+    - set_spawn
+    - inspect_block
+    - observe
+    - survey
+    - place
+0.6.67:
+  changes:
+    - time, observe, and survey now include converted clock fields so agents do not convert ticks themselves: time24 (hour=(worldTime/1000+6)%24), time12, ticksUntilSunrise (tick 0 / 6:00 AM), ticksUntilSunset (tick 12000 / 6:00 PM). 19595 is 1:35 AM, not 2:35
+  actionsAdded: []
+  actionsChanged:
+    - time
+    - observe
+    - survey
+0.6.66:
+  changes:
+    - observe, survey, and a dedicated time action report the Minecraft world clock (worldTime, dayNumber, timeOfDay dawn/day/dusk/night, daylightCycle/frozen, sleepable) from world ticks, not sky light, so indoor agents can plan sleep and travel. give has been a real transfer since 0.6.63
+  actionsAdded:
+    - time
+  actionsChanged:
+    - observe
+    - survey
+    - give
+0.6.65:
+  changes:
+    - survey now returns a per-column headroom grid (min/max/mode, ceilings, floors) and warnings for uneven floors/ceilings or cells that are short of the rest of the room, so an unfinished excavation is visible instead of one overall ceilingY
+  actionsAdded: []
+  actionsChanged:
+    - survey
+0.6.64:
+  changes:
+    - survey flood-fills the connected walkable space with the same goto/walkmap body rules and returns a room (environment, floor/ceiling, walls, reachable doors/openings, same-room workstations) instead of a raw block list. worldmap persists those rooms and can route chest→outdoors. Unknown neighbors are not blocked. command stays off
+  actionsAdded:
+    - survey
+    - worldmap
+  actionsChanged: []
+0.6.63:
+  changes:
+    - give and the rest of the planned catalog are now real actions (throw, interact, trade, brew/enchant/anvil/smith/stonecut, drink/heal, milk/tame/fish, fill/water, shield/retreat/defend, move/swim/climb/portal, emote). Items are only transferred or consumed, never created. heal does not set health. command stays unavailable
+  actionsAdded:
+    - give
+    - throw
+    - interact
+    - interact_player
+    - shield
+    - drink
+    - heal
+    - milk
+    - tame
+    - set_spawn
+    - water
+    - fill
+    - fish
+    - trade
+    - trade_offers
+    - emote
+    - retreat
+    - defend
+    - brew
+    - enchant
+    - anvil
+    - smith
+    - stonecut
+    - swim
+    - climb
+    - portal
+    - move
+  actionsChanged: []
+0.6.62:
+  changes:
+    - follow and protect walk with the same goto A* as a player walk instead of Citizens entity targeting every tick; the body holds at 2-4, on an overlook (horiz 4 or less and a drop greater than 3), or after no_path, so Helper on a hill above a mountain base stands and faces instead of twitching
+  actionsAdded: []
+  actionsChanged:
+    - follow
+    - protect
+0.6.61:
+  changes:
+    - command pickup no longer waits on heartbeats or a 10s offline sleep; action poll is 100ms on its own worker, telemetry stays 1s on a second worker, and an offline body defers to the next poll instead of blocking every order
+  actionsAdded: []
+  actionsChanged: []
+0.6.60:
+  changes:
+    - idle self-defense flee uses goto (same A* as a player walk) instead of a raw driveWalk, so a 2-block face or stair does not freeze the body; when safe, a paused goto/follow resumes, otherwise the body gotoes back to the pre-flee stand
+  actionsAdded: []
+  actionsChanged:
+    - goto
+    - fight
+0.6.59:
+  changes:
+    - respawn is now an action: send this body to its persisted bed or charged respawn anchor, or to world spawn if none is set. Same teleport class as death (safe stand, 5s no-damage). Alive bodies teleport and keep inventory and health; a dead body is spawned. Stops goto/combat. sleep sets the bed used here
+    - goto still does not mine unless dig:true (0.6.58)
+  actionsAdded:
+    - respawn
+  actionsChanged:
+    - sleep
+0.6.58:
+  changes:
+    - goto no longer mines by default; a walk does not tunnel a house. dig:true is required to stair/tunnel, and unstick only breaks blocks when dig is true
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.57:
+  changes:
+    - goto does not JUMP a 1-block step when leaves or logs sit at current y+2, so Hero under a tree walks out instead of bonking the canopy; a stone or dirt 1x2 stair ceiling still climbs
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.56:
+  changes:
+    - after a world reset the empty registry is expected; /agentsmc bridge enable <server-token> or AGENTSMC_SERVER_TOKEN turns the bridge on and the next poll recreates the registered agents at world spawn (same Site ids, not new agents)
+    - display names come from the bridge registration (persisted locally)
+  actionsAdded: []
+  actionsChanged: []
+0.6.55:
+  changes:
+    - goto no longer treats the foot of an intermediate 2-block face as a closer/around approach, so a crater-rim pocket (a wood-run) walks the 1-step instead of stalling on westward +2 faces
+    - spawn protection still cannot dig a stair there; this is a walk-around, not a teleport
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.54:
+  changes:
+    - break refuses iron/gold/diamond ore when the only pickaxe is too weak, so a broken stone pick does not let a wooden pick destroy iron with no drop (fb-28)
+    - goto STOOP also exits a cratered doorway downward (fb-27); same teleport class as the air snap
+    - inspect_container and transfer on a chest/furnace/barrel are use, not a build; spawn protection still blocks break/place/dig (fb-26)
+  actionsAdded: []
+  actionsChanged:
+    - break
+    - goto
+    - inspect_container
+    - transfer
+0.6.53:
+  changes:
+    - goto steps into a cratered village doorway when A* cannot climb the podium (fb-24). Spawn protection still cannot place a stoop; this is the same teleport class as the air snap
+    - use on doors/gates/trapdoors needs 5-block reach only; cobble no longer blocks the click
+    - craft WOODEN_SWORD (and other wooden tools) uses a vanilla fallback so the result is a sword, not empty (fb-25)
+  actionsAdded: []
+  actionsChanged:
+    - goto
+    - use
+    - craft
+0.6.52:
+  changes:
+    - goto walks through wooden doors and fence gates so a village-hut chest is not a 20k no_path behind cobble (fb-23)
+    - spawn-protection doors can be opened by players and agents; the plugin does not slam them shut and villagers do not close them. Break/place/dig there stay blocked
+    - a short unreachable dest searches locally instead of flooding 20k cave cells
+  actionsAdded: []
+  actionsChanged:
+    - goto
+    - use
+0.6.51:
+  changes:
+    - feedback_resolve accepts the older optional status field again (fb-22); it is a done marker and is ignored. id and note are unchanged
+  actionsAdded: []
+  actionsChanged:
+    - feedback_resolve
+0.6.50:
+  changes:
+    - protect and follow resolve spawned agent bodies by display name (fb-21); Helper is not offline
+    - goto that stalls within 2 blocks of a reachable dest finishes arrived_near instead of failed; a 20k-budget miss that already closed returns that approach
+    - inspect_container from a touching cell does not need line of sight; otherwise the error names the blocking block and x,y,z
+    - craft names the missing ingredient and have/need counts; equip to=hand moves a storage sword/tool into the hotbar
+    - a multi-step program that fails after earlier successes reports partial=true with succeeded/failed counts
+  actionsAdded: []
+  actionsChanged:
+    - protect
+    - follow
+    - goto
+    - inspect_container
+    - craft
+    - equip
+    - execute
+0.6.49:
+  changes:
+    - goto auto-jumps a one-block step: horizontal is delayed until the hop clears the face so the body does not slam a dirt corner
+    - JUMP waypoints are cardinal only; diagonal hops no longer cut a solid corner
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.48:
+  changes:
+    - goto walks around a 2-block face to a 1-step instead of failing stuck on the rim; hugging the unclimbable foot is penalized
+    - a 1.8-tall player needs two clear blocks; a 1-block hole or slab/snow in the head cell is not a walk
+    - self-defense flee (fb-20) drives with the jump-1 walker, never aims two blocks up, and is not frozen by a leftover combat-busy flag
+  actionsAdded: []
+  actionsChanged:
+    - goto
+    - fight
+    - observe
+0.6.47:
+  changes:
+    - goto never jumps a 2-block face: JUMP waypoints are reached only when the feet are on that step, not mid-air below it
+    - climb velocity refuses dest more than one block above the current stand cell (vanilla cannot mount +2); ladders still climb
+    - unstick step hop stays at vanilla 0.42 and never launches at destY-hereY of 2
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.46:
+  changes:
+    - goto and walkmap treat mushrooms, flowers, short grass, ferns, and saplings as passable, not floors
+    - smelt/fuel missing coordinates report x/y/z/material/amount (never the injected world/agent selectors)
+    - craft accepts material as an alias of item; amount defaults to 1; vanilla fallbacks for planks, sticks, and chest
+    - death keeps armor slots 36-39 and offhand 40 with storage; vanilla drops are cleared so restore does not duplicate
+    - self-defense flees under 12 health, and immediately when unarmed versus a ranged mob, pathing behind cover
+    - break/dig empty-drop plants and leaves remain allowed (fb-11/fb-16); unreachable self-defense still gives up after 5s (fb-15)
+  actionsAdded: []
+  actionsChanged:
+    - goto
+    - walkmap
+    - smelt
+    - fuel
+    - craft
+    - inventory
+    - fight
+    - observe
+0.6.45:
+  changes:
+    - goto moving is committed net displacement on every path (Citizens fallback included); no-net-progress fails stuck instead of reporting moving
+    - climb velocity never keeps leftover upward vy past the waypoint/target cap; pillar unstick never builds above target Y+1; climbed_past_path aborts any trip and snaps down the same column
+    - execute/dig/place always return a non-empty named error on the inline result (wrong-type and object fields name the key); action.failed never has a blank error
+    - death uses a persisted bed/anchor, else world spawn (never the death camp); two deaths in 20s at the same cell fall back to world spawn; 5s no-damage after respawn
+    - watchdog spawn searches 16 blocks vertically then falls back to world spawn when the last cell is not standable
+  actionsAdded: []
+  actionsChanged:
+    - goto
+    - break
+    - dig
+    - place
+    - sleep
+    - say
+    - execute
+0.6.44:
+  changes:
+    - downward waypoint velocity is applied before the ascent cap so stationary bodies descend off ledges instead of hovering and reporting stuck
+    - retains the 0.6.43 crater-safe lifecycle respawn and visible recovery diagnostics
+  actionsAdded: []
+  actionsChanged:
+    - goto
+    - observe
+0.6.43:
+  changes:
+    - death, startup, and watchdog respawns search 16 blocks vertically around the saved spawn so creeper craters do not leave bodies offline forever
+    - watchdog uses the saved respawn point instead of a dead entity's death position
+    - shutdown preserves intentional spawn state; observe exposes bodyLifecycle and the actual recovery error
+  actionsAdded: []
+  actionsChanged:
+    - observe
+0.6.42:
+  changes:
+    - self-defense gives up on an unreachable hostile (no path, or no hits and no closing for 5s) instead of pausing every goto until the 60s timeout
+    - stop and goto override self-defense for 15s; the unreachable mob is ignored for 20s unless it lands a hit
+    - break/dig no longer refuse leaves, snow, or other no-drop blocks; the best owned shears/hoe/sword/shovel is auto-equipped
+  actionsAdded: []
+  actionsChanged:
+    - goto
+    - stop
+    - break
+    - dig
+    - fight
+    - observe
+0.6.41:
+  changes:
+    - 250ms fast-lane action and event polling (4 Hz) decoupled from 1 Hz heartbeat/viewer/UI telemetry, with 100ms navigation wait checks
+    - concurrent action execution while walking or running a program: say, whisper, reply, observe, inventory, scan, heightmap, walkmap, craft, equip, eat, chat_log, and locate run immediately without waiting for goto/steps to finish
+    - non-blocking background execution (background:true / await:false on goto and steps programs), program preemption (preempt:true / stop), zero-gap next-program pipelining, and reactive abortIf interrupts (chat, whisper, threat, damage, any)
+    - real-time System-1 micro-autonomy while the LLM thinks (water anti-drown buoyancy, proactive upkeep auto-eat, passive 2-block drop pickup, and natural social gaze toward nearby players)
+  actionsAdded: []
+  actionsChanged:
+    - goto
+    - map
+    - observe
+    - say
+    - craft
+    - equip
+    - eat
+0.6.40:
+  changes:
+    - equip auto-wears armor, elytra, and carved pumpkins in the matching slot; shields and torches go to the offhand
+    - inventory, observe, move_item, swap, inspect_item, and drop expose slots 36-39 (armor) and 40 (offhand); equip on a worn slot unequips
+    - walkmap flood-fills from the nearest standable feet Y so open grass is not an all-# 0-reachable grid
+    - say and follow always return a non-empty error (never a silent blank failure)
+  actionsAdded: []
+  actionsChanged:
+    - equip
+    - inventory
+    - observe
+    - move_item
+    - swap
+    - inspect_item
+    - drop
+    - walkmap
+    - say
+    - follow
+0.6.39:
+  changes:
+    - recovered_from_air only fires when there is no solid within ~1 block below the feet (a hillside stall at y 78.94 is not airborne)
+    - scan and other non-movement actions no longer snap the body; air recovery stays on the watchdog
+    - snap-down still requires an open air column to the first standable cell (never through stone into a cave)
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.38:
+  changes:
+    - nav.recovered_from_air only snaps down an open air column (never through solid ground into a cave)
+    - jump, knockback, and self-defense/combat do not trigger recovered_from_air
+    - the body must be unsupported and airborne for about 1.5s before a snap; standing or clipped into the floor is not airborne
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.37:
+  changes:
+    - goto climbs a self-dug 1x2 staircase with 1-block JUMP hops; dest headroom is enough (current ceiling is not required)
+    - arrived_near is not reported when the body is still a block below the target
+    - a 1-over 1-up hop uses the grid path, not Citizens straight-line
+    - jump attempts reset fallDistance; stop/timeout/stall halt velocity so a stalled climb cannot apply phantom FALL
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.36:
+  changes:
+    - nav status is moving only on committed net displacement; oscillation is not travel
+    - 3s with no net move replans, then fails stuck and blacklists that cell so the next plan cannot use it
+    - pathfinder does not DROP/JUMP into leaf/log canopy pockets (jump headroom treats leaves and logs as solid ceiling)
+    - heightmap and walkmap accept their documented fields (radius/x/z and radius/ymin/ymax/dig) including injected world, with tolerant int/float/string numbers
+    - goto dig:true mines the next 1x2 then steps; it fails stuck after 5s with no tunnel progress instead of a 60s timeout
+  actionsAdded: []
+  actionsChanged:
+    - goto
+    - heightmap
+    - walkmap
+0.6.35:
+  changes:
+    - goto never applies upward velocity past the next waypoint Y and hard-caps climb at target Y+1
+    - goto aborts with climbed_past_path if body Y exceeds the path's max Y by more than 2
+    - airborne bodies with no path snap down the same column (recovered_from_air in the result and a nav.recovered_from_air event)
+    - every action result is a JSON object with ok or a non-empty error (never a null/JsonNull payload)
+    - poll/heartbeat exceptions are logged and retried next second instead of stopping the HTTPS worker
+    - viewer capture bounds are clamped to world height and the Site schema (-64..320) so a body at y≈316 cannot 400 Invalid capture bounds
+    - per-agent viewer and panel POST 4xx/5xx are logged and retried with backoff; they never stop heartbeats or other agents
+    - spawn protection matches vanilla Chebyshev square (max |dx|,|dz|)
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.34:
+  changes:
+    - heightmap returns a compact top-down surface grid (relative height + grass/stone/sand/water/lava/tree/snow/other) with origin and yBase
+    - walkmap flood-fills with the same stand/step/drop/hazard rules as goto and marks reachable, cliffs, liquid, and hazards
+    - neither action loads chunks; responses are compact strings, not per-cell objects
+  actionsAdded:
+    - heightmap
+    - walkmap
+  actionsChanged: []
+0.6.33:
+  changes:
+    - server-wide chat log for the current plugin run (serverSessionId) captured with no viewer open
+    - public say/player chat is one ordered feed; whispers stay on the intended agent
+    - chat_log pages older/newer messages; truncated history is marked complete=false
+    - heartbeat chatLog is sent only when poll features include agent-chat-log-v1
+  actionsAdded:
+    - chat_log
+  actionsChanged: []
+0.6.32:
+  changes:
+    - goto dig:true mines a 1x2 stair or tunnel through stone toward a buried target instead of instant no_path when a shaft connects to the surface
+    - DIG waypoints break stone/ore (never crafting tables, furnaces, or chests) instead of walking into the wall
+    - arrived_near is only reported when the body is within about 1 block of the target
+    - a replan loop with no net displacement fails stuck early instead of running the full timeout
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.31:
+  changes:
+    - feedback files a bug, request, or idea to plugins/AgentsMC/feedback.json; feedback_list and feedback_resolve are maintainer reads
+    - console: agentsmc feedback list / agentsmc feedback resolve <id>
+    - each agent publishes a plugin-owned MCP App status panel (health, food, position, nav, inventory, events, follow/stop/come)
+  actionsAdded:
+    - feedback
+    - feedback_list
+    - feedback_resolve
+  actionsChanged: []
+0.6.30:
+  changes:
+    - goto walks off a 1-block ledge into an adjacent hole instead of sitting on the edge until timeout
+    - goto dig:true mines a stair or shaft through stone/dirt to a buried target instead of no_path
+    - goto.arrived is not followed by a contradicting goto.stuck when the body is still a step above the target
+  actionsAdded: []
+  actionsChanged:
+    - goto
+0.6.29:
+  changes:
+    - plugin.updated is posted to every linked agent when the running version changes
+    - say and dig/break/harvest no longer throw ClassCastException (String cannot be cast to char[])
+    - goto over 20+ blocks plans and walks instead of failing instantly with timeout
+    - event catalog posts on connect for every linked agent
+    - follow and whisper resolve players/agents by name; every refusal is a non-empty error
+    - sleep/bed/anchor set observe.respawnPoint used on death
+  actionsAdded: []
+  actionsChanged:
+    - say
+    - dig
+    - break
+    - harvest
+    - goto
+    - follow
+    - whisper
+    - sleep
+

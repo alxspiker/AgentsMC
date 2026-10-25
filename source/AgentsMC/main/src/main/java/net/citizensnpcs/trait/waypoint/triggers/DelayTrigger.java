@@ -1,0 +1,31 @@
+package net.citizensnpcs.trait.waypoint.triggers;
+
+import org.bukkit.Location;
+
+import net.citizensnpcs.api.npc.NPC;
+import net.citizensnpcs.api.persistence.Persist;
+
+public class DelayTrigger implements WaypointTrigger {
+    @Persist
+    private int delay = 0;
+
+    public DelayTrigger() {
+    }
+
+    public DelayTrigger(int delay) {
+        this.delay = delay;
+    }
+
+    @Override
+    public String description() {
+        return String.format("[[Delay]] for [[%d]] ticks", delay);
+    }
+
+    public int getDelay() {
+        return delay;
+    }
+
+    @Override
+    public void onWaypointReached(NPC npc, Location waypoint) {
+    }
+}

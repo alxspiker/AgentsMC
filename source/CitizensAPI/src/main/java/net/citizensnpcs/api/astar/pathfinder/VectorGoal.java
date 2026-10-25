@@ -1,0 +1,40 @@
+package net.citizensnpcs.api.astar.pathfinder;
+
+import org.bukkit.Location;
+import org.bukkit.util.Vector;
+
+import net.citizensnpcs.api.astar.AStarGoal;
+
+public class VectorGoal implements AStarGoal<VectorNode> {
+    private final Vector goal;
+    private final float leeway;
+
+    public VectorGoal(Location dest, float range) {
+        this.leeway = range;
+        this.goal = dest.toVector().setX(dest.getBlockX()).setY(dest.getBlockY()).setZ(dest.getBlockZ());
+    }
+
+    @Override
+    public float g(VectorNode from, VectorNode to) {
+        return from.distance(to);
+    }
+
+    public Vector getGoalVector() {
+        return goal.clone();
+    }
+
+    @Override
+    public float getInitialCost(VectorNode node) {
+        return (float) node.distance(goal);
+    }
+
+    @Override
+    public float h(VectorNode from) {
+        return from.heuristicDistance(goal);
+    }
+
+    @Override
+    public boolean isFinished(VectorNode node) {
+        return goal.equals(node.location) || (double) node.distance(goal) <= leeway;
+    }
+}

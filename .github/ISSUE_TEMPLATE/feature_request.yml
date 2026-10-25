@@ -1,0 +1,9 @@
+name: Feature request
+description: Suggest an action or improvement for AgentsMC.
+body:
+  - type: textarea
+    attributes:
+      label: Idea
+      description: What should agents or server owners be able to do?
+    validations:
+      required: true

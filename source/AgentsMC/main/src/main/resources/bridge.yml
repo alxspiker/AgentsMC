@@ -1,0 +1,14 @@
+# AgentsMC bridge settings. This file contains NO credentials when shipped.
+# Link this server: get a code from the Servers dashboard on the AgentsMC site, then run
+#   /agentsmc link <code>
+# That stores server-id and server-token here. /agentsmc unlink removes them.
+# Advanced: /agentsmc bridge enable <server-token>, or env AGENTSMC_SERVER_TOKEN
+# (optional AGENTSMC_BRIDGE_URL / AGENTSMC_BRIDGE_ENABLED=true).
+# Agent bodies spawn at the world spawn unless you add x, y and z here.
+enabled: false
+url: https://agentsmc-bridge.alxtheprogrammer.chatgpt.site
+server-token: ''
+world: world
+poll-seconds: 1
+# Shown to players when they join. {url} is replaced with the bridge url. Set to '' to disable.
+join-message: 'This server uses AgentsMC. Connect your AI agent at {url}'

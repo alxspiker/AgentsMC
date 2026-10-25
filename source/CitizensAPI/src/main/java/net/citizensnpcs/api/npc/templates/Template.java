@@ -1,0 +1,87 @@
+package net.citizensnpcs.api.npc.templates;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+import org.bukkit.NamespacedKey;
+
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+
+import net.citizensnpcs.api.event.DespawnReason;
+import net.citizensnpcs.api.event.NPCDamageEvent;
+import net.citizensnpcs.api.event.NPCDeathEvent;
+import net.citizensnpcs.api.event.NPCLeftClickEvent;
+import net.citizensnpcs.api.event.NPCRightClickEvent;
+import net.citizensnpcs.api.event.NPCSpawnEvent;
+import net.citizensnpcs.api.npc.NPC;
+import net.citizensnpcs.api.npc.templates.TemplateRegistry.TemplateErrorReporter;
+import net.citizensnpcs.api.persistence.PersistenceLoader;
+import net.citizensnpcs.api.util.DataKey;
+
+public class Template {
+    private final List<Consumer<NPC>> actions = new ArrayList<>();
+    private final NamespacedKey key;
+
+    private Template(NamespacedKey key) {
+        this.key = key;
+    }
+
+    private void addAction(Consumer<NPC> action) {
+        actions.add(action);
+    }
+
+    public void apply(NPC npc) {
+        boolean respawn = npc.isSpawned();
+        if (respawn) {
+            npc.despawn(DespawnReason.PENDING_RESPAWN);
+        }
+        for (Consumer<NPC> action : actions) {
+            action.accept(npc);
+        }
+        if (respawn) {
+            npc.spawn(npc.getStoredLocation());
+        }
+    }
+
+    public NamespacedKey getKey() {
+        return key;
+    }
+
+    public static Template load(TemplateErrorReporter errors, TemplateWorkspace workspace, NamespacedKey identifier,
+            DataKey key) {
+        Template template = new Template(identifier);
+        if (key.keyExists("yaml_replace")) {
+            template.addAction(PersistenceLoader.load(YamlReplacementAction.class, key.getRelative("yaml_replace")));
+        }
+        if (key.keyExists("traits")) {
+            template.addAction(new TraitLoaderAction(errors, workspace, key.getRelative("traits")));
+        }
+        if (key.keyExists("commands")) {
+            loadCommands(template, workspace, key.getRelative("commands"));
+        }
+        return template;
+    }
+
+    private static void loadCommands(Template template, TemplateWorkspace workspace, DataKey key) {
+        for (DataKey sub : key.getSubKeys()) {
+            List<String> commands = Lists
+                    .newArrayList(Iterables.transform(sub.getIntegerSubKeys(), k -> k.getString("")));
+            if (sub.name().equals("on_spawn")) {
+                template.addAction(new CommandEventAction(NPCSpawnEvent.class, new CommandListExecutor(commands)));
+            } else if (sub.name().equals("on_death")) {
+                template.addAction(new CommandEventAction(NPCDeathEvent.class, new CommandListExecutor(commands)));
+            } else if (sub.name().equals("on_damage")) {
+                template.addAction(new CommandEventAction(NPCDamageEvent.class, new CommandListExecutor(commands)));
+            } else if (sub.name().equals("on_left_click")) {
+                template.addAction(new CommandEventAction(NPCLeftClickEvent.class, new CommandListExecutor(commands)));
+            } else if (sub.name().equals("on_right_click")) {
+                template.addAction(new CommandEventAction(NPCRightClickEvent.class, new CommandListExecutor(commands)));
+            } else if (sub.name().equals("on_template_apply")) {
+                CommandListExecutor cle = new CommandListExecutor(commands);
+                template.addAction(npc -> cle.accept(npc));
+            }
+        }
+    }
+}

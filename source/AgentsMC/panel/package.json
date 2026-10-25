@@ -1,0 +1,16 @@
+{
+  "name": "agentsmc-panel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && mv -f ../main/src/main/resources/index.html ../main/src/main/resources/agent-panel.html"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "1.7.5"
+  },
+  "devDependencies": {
+    "terser": "^5.44.0",
+    "vite": "^7.1.7",
+    "vite-plugin-singlefile": "^2.3.0"
+  }
+}

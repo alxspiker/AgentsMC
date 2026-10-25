@@ -1,0 +1,415 @@
+package net.citizensnpcs.api.util;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Method;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Color;
+import org.bukkit.Keyed;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
+import org.bukkit.World;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
+import org.bukkit.inventory.ItemStack;
+
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
+import com.google.common.primitives.Ints;
+import com.google.common.primitives.Longs;
+
+public class SpigotUtil {
+    /**
+     * Spigot has changed InventoryViews to be an abstract class instead of an interface necessitating an abstraction
+     * over the existing API to avoid java runtime errors. This class is subject to change as required.
+     */
+    public static class InventoryViewAPI {
+        private final InventoryView view;
+
+        public InventoryViewAPI(InventoryView view) {
+            this.view = view;
+        }
+
+        public void close() {
+            try {
+                CLOSE.invoke(view);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj || obj == null)
+                return true;
+
+            if (getClass() != obj.getClass())
+                return false;
+
+            InventoryViewAPI other = (InventoryViewAPI) obj;
+            if (view == null) {
+                if (other.view != null) {
+                    return false;
+                }
+            } else {
+                try {
+                    if (!(boolean) EQUALS.invoke(view, other.view))
+                        return false;
+
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public Player getPlayer() {
+            try {
+                return (Player) GET_PLAYER.invoke(view);
+            } catch (Throwable e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        public Inventory getTopInventory() {
+            try {
+                return (Inventory) TOP_INVENTORY.invoke(view);
+            } catch (Throwable e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        public InventoryView getView() {
+            return view;
+        }
+
+        @Override
+        public int hashCode() {
+            try {
+                return 31 + ((view == null) ? 0 : (int) HASHCODE.invoke(view));
+            } catch (Throwable e) {
+                e.printStackTrace();
+                return 31;
+            }
+        }
+
+        private static MethodHandle getMethod(Class<?> clazz, String method, Class<?>... params) {
+            try {
+                Method f = null;
+                try {
+                    f = clazz.getMethod(method, params);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return MethodHandles.publicLookup().unreflect(f);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        private static final MethodHandle CLOSE = getMethod(InventoryView.class, "close");
+        private static final MethodHandle EQUALS = getMethod(Object.class, "equals", Object.class);
+        private static final MethodHandle GET_PLAYER = getMethod(InventoryView.class, "getPlayer");
+        private static final MethodHandle HASHCODE = getMethod(Object.class, "hashCode");
+        private static final MethodHandle TOP_INVENTORY = getMethod(InventoryView.class, "getTopInventory");
+    }
+
+    public static boolean checkYSafe(double y, World world) {
+        if (!SUPPORT_WORLD_HEIGHT || world == null)
+            return y >= 0 && y <= 255;
+
+        try {
+            return y >= world.getMinHeight() && y <= world.getMaxHeight();
+        } catch (Throwable t) {
+            SUPPORT_WORLD_HEIGHT = false;
+            return y >= 0 && y <= 255;
+        }
+    }
+
+    public static <T extends Keyed> T getEnumValue(Class<T> clazz, String... keyCandidates) {
+        if (isRegistryKeyed(clazz))
+            return getRegistryValue(Bukkit.getRegistry(clazz), keyCandidates);
+
+        for (String keyCandidate : keyCandidates) {
+            try {
+                return (T) Enum.valueOf((Class<? extends Enum>) clazz, keyCandidate);
+            } catch (IllegalArgumentException e) {
+            }
+        }
+        return null;
+    }
+
+    public static NamespacedKey getKey(String raw) {
+        return getKey(raw, "minecraft");
+    }
+
+    public static NamespacedKey getKey(String raw, String defaultNamespace) {
+        int index = raw.indexOf(':');
+        if (index == -1) {
+            raw = defaultNamespace + ":" + raw.toLowerCase(Locale.ROOT);
+        } else {
+            raw = raw.substring(0, index) + raw.substring(index).toLowerCase(Locale.ROOT);
+        }
+        return NamespacedKey.fromString(raw);
+    }
+
+    public static int getMaxNameLength(EntityType type) {
+        return isUsing1_13API() ? 256 : 64;
+    }
+
+    public static <T extends Keyed> T getRegistryValue(Registry<T> registry, String... keyCandidates) {
+        for (String keyCandidate : keyCandidates) {
+            final NamespacedKey key = SpigotUtil.getKey(keyCandidate);
+            final T value = registry.get(key);
+            if (value != null)
+                return value;
+        }
+        return null;
+    }
+
+    public static int[] getVersion() {
+        if (BUKKIT_VERSION == null) {
+            String version = Bukkit.getBukkitVersion();
+
+            if (version == null || version.isEmpty())
+                return BUKKIT_VERSION = new int[] { 8, 8 };
+
+            String[] parts = version.split("\\.");
+            if (parts[1].contains("-")) {
+                parts[1] = parts[1].split("-")[0];
+            }
+            if (parts[2].contains("-")) {
+                parts[2] = parts[2].split("-")[0];
+            }
+            if (parts[2].contains("build") || parts[2].contains("local")) {
+                parts[2] = "0";
+            }
+            if (parts[0].equals("1")) {
+                parts[0] = parts[1];
+                parts[1] = parts[2];
+            }
+            return BUKKIT_VERSION = new int[] { Integer.parseInt(parts[0]), Integer.parseInt(parts[1]) };
+        }
+        return BUKKIT_VERSION;
+    }
+
+    public static boolean isFoliaServer() {
+        return FOLIA_SERVER;
+    }
+
+    public static boolean isRegistryKeyed(Class<?> clazz) {
+        if (NON_REGISTRY_CLASSES.containsKey(clazz))
+            return false;
+        try {
+            return SUPPORTS_KEYED && Keyed.class.isAssignableFrom(clazz)
+                    && Bukkit.getRegistry((Class<? extends Keyed>) clazz) != null;
+        } catch (Exception ex) {
+            NON_REGISTRY_CLASSES.put(clazz, true);
+            return false;
+        }
+    }
+
+    public static boolean isUsing1_13API() {
+        if (using1_13API == null) {
+            try {
+                Enchantment.getByKey(Enchantment.getByName("ARROW_DAMAGE").getKey());
+                using1_13API = true;
+            } catch (Exception ex) {
+                using1_13API = false;
+            } catch (NoSuchMethodError ex) {
+                using1_13API = false;
+            }
+        }
+        return using1_13API;
+    }
+
+    public static Color parseColor(String string) {
+        if (!string.contains(","))
+            return Color.fromRGB(Integer.decode(string));
+        List<Integer> list = Splitter.on(',').splitToStream(string).map(Integer::parseInt).collect(Collectors.toList());
+        if (list.size() == 3) {
+            return Color.fromRGB(list.get(0), list.get(1), list.get(2));
+        } else if (list.size() == 4) {
+            return Color.fromARGB(list.get(3), list.get(0), list.get(1), list.get(2));
+        }
+        throw new NumberFormatException();
+    }
+
+    public static Duration parseDuration(String raw, TimeUnit defaultUnits) {
+        if (defaultUnits == null) {
+            Integer ticks = Ints.tryParse(raw);
+            if (ticks != null)
+                return Duration.ofMillis(ticks * 50);
+        } else if (NUMBER_MATCHER.matcher(raw).matches())
+            return Duration.of(Longs.tryParse(raw), toChronoUnit(defaultUnits));
+        if (raw.endsWith("t"))
+            return Duration.ofMillis(Integer.parseInt(raw.substring(0, raw.length() - 1)) * 50);
+        raw = DAY_MATCHER.matcher(raw).replaceFirst("P$1").replace("min", "m").replace("hr", "h");
+        if (raw.charAt(0) != 'P') {
+            raw = "PT" + raw;
+        }
+        return Duration.parse(raw);
+    }
+
+    public static Predicate<Entity> parseEntityFilter(String raw) {
+        Predicate<Entity> base = e -> true;
+        for (String arg : raw.split(" ")) {
+            String[] parts = arg.split("=");
+            String type = parts[0];
+            String match = parts[1];
+            switch (type) {
+                case "type":
+                    Set<EntityType> types = Splitter.on(',').splitToStream(match)
+                            .map(s -> SpigotUtil.getEnumValue(EntityType.class, s)).collect(Collectors.toSet());
+                    base = base.and(e -> types.contains(e.getType()));
+                    break;
+                case "permission":
+                case "perm":
+                    Collection<String> perms = Splitter.on(',').splitToList(raw);
+                    base = base.and(e -> perms.stream().allMatch(perm -> e.hasPermission(perm)));
+                    break;
+                case "group":
+                    Collection<String> groups = Splitter.on(',').splitToList(raw);
+                    base = base.and(e -> e instanceof Player && PermissionUtil.inGroup(groups, (Player) e));
+                    break;
+            }
+        }
+        return base;
+    }
+
+    public static ItemStack parseItemStack(ItemStack base, String item) {
+        if (base == null || base.getType() == Material.AIR) {
+            base = new ItemStack(Material.STONE, 1);
+        }
+        if (item.contains("["))
+            return Bukkit.getItemFactory().createItemStack(item);
+
+        String[] parts = Iterables.toArray(Splitter.on(',').split(item), String.class);
+        if (parts.length == 0)
+            return base;
+        Material material = Material.matchMaterial(parts[0]);
+        if (material != null) {
+            base.setType(material);
+        }
+        if (parts.length > 1) {
+            base.setAmount(Ints.tryParse(parts[1]));
+        }
+        if (parts.length > 2) {
+            Integer durability = Ints.tryParse(parts[2]);
+            base.setDurability(durability.shortValue());
+        }
+        return base;
+    }
+
+    /**
+     * Parses a duration string and returns the number of ticks. Supports formats like "5s", "10m", "100t", or plain
+     * numbers (interpreted as ticks).
+     *
+     * @param raw
+     *            the duration string to parse
+     * @return the number of ticks, or -1 if parsing fails
+     */
+    public static int parseTicks(String raw) {
+        try {
+            Duration duration = parseDuration(raw, null);
+            return duration == null ? -1 : toTicks(duration);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    public static CompletableFuture<Boolean> teleportAsync(Entity entity, Location location) {
+        return ASYNC_TELEPORT ? entity.teleportAsync(location)
+                : CompletableFuture.completedFuture(entity.teleport(location));
+    }
+
+    public static CompletableFuture<Boolean> teleportAsync(Entity entity, Location location,
+            PlayerTeleportEvent.TeleportCause cause) {
+        return ASYNC_TELEPORT ? entity.teleportAsync(location, cause)
+                : CompletableFuture.completedFuture(entity.teleport(location, cause));
+    }
+
+    private static ChronoUnit toChronoUnit(TimeUnit tu) {
+        switch (tu) {
+            case NANOSECONDS:
+                return ChronoUnit.NANOS;
+            case MICROSECONDS:
+                return ChronoUnit.MICROS;
+            case MILLISECONDS:
+                return ChronoUnit.MILLIS;
+            case SECONDS:
+                return ChronoUnit.SECONDS;
+            case MINUTES:
+                return ChronoUnit.MINUTES;
+            case HOURS:
+                return ChronoUnit.HOURS;
+            case DAYS:
+                return ChronoUnit.DAYS;
+            default:
+                throw new AssertionError();
+        }
+    }
+
+    /**
+     * Converts a Duration to Minecraft ticks (20 ticks per second).
+     *
+     * @param duration
+     *            the duration to convert
+     * @return the number of ticks
+     */
+    public static int toTicks(Duration duration) {
+        return (int) (TimeUnit.MILLISECONDS.convert(duration.getSeconds(), TimeUnit.SECONDS)
+                + TimeUnit.MILLISECONDS.convert(duration.getNano(), TimeUnit.NANOSECONDS)) / 50;
+    }
+
+    private static boolean ASYNC_TELEPORT;
+    private static int[] BUKKIT_VERSION = null;
+    private static final Pattern DAY_MATCHER = Pattern.compile("(\\d+d)");
+    private static boolean FOLIA_SERVER;
+    private static final Map<Class<?>, Boolean> NON_REGISTRY_CLASSES = new WeakHashMap<Class<?>, Boolean>();
+    private static final Pattern NUMBER_MATCHER = Pattern.compile("(\\d+)");
+    private static boolean SUPPORT_WORLD_HEIGHT = true;
+    private static boolean SUPPORTS_KEYED;
+    private static Boolean using1_13API;
+
+    static {
+        try {
+            SUPPORTS_KEYED = Class.forName("org.bukkit.Keyed") != null;
+        } catch (ClassNotFoundException e) {
+        }
+        try {
+            FOLIA_SERVER = Class.forName("io.papermc.paper.threadedregions.RegionizedServer") != null;
+        } catch (ClassNotFoundException ignored) {
+        }
+        try {
+            ASYNC_TELEPORT = Entity.class.getMethod("teleportAsync", Location.class,
+                    PlayerTeleportEvent.TeleportCause.class) != null;
+        } catch (NoSuchMethodException exception) {
+        }
+    }
+}
