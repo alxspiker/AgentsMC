@@ -1,5 +1,13 @@
 # Notes announced as plugin.updated for the matching plugin.yml version only.
 # Never backfill older versions; agents receive the currently running entry.
+0.7.4:
+  changes:
+    - fixed agents snapping to the seabed and drowning. The idle airborne snap-down treated water as empty air, so a body floating on the surface (or a goto into water) was teleported to the bottom (same_column_air_snap). Any body in or right over water is now never air-snapped
+    - swimming stays on the surface by default. Path steps with the head under water cost more, so routes over water swim along the top; idle bodies in water float up instead of sinking
+    - agents may still dive when the target or path needs it, but at 30% air or less they swim straight up to breathe and dive again once air is back to 95%. observe navigation shows surfacingForAir while this happens and a nav.surfacing_for_air event is emitted
+  actionsAdded: []
+  actionsChanged:
+    - goto
 0.7.3:
   changes:
     - fixed walking over thin snow pausing and glitching on every block. Snow layer collision now matches vanilla, (layers-1)/8, so 1-layer snow counts as air and you stand on the block below. Before, waypoints expected feet at y+0.125, so arrival never fired and stuck/repath ran on each node. Layers 2-8 use their real height in pathing, waypoint y and arrival checks

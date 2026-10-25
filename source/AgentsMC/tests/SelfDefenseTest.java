@@ -149,9 +149,9 @@ public final class SelfDefenseTest {
                 "chest/barrel use is not a build");
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.3".equals(version), "plugin.yml version: " + version);
+        check("0.7.4".equals(version), "plugin.yml version: " + version);
 
-        System.out.println("PASS: idle self-defense triggers, flee at 12, armed melee to 6, unarmed-ranged cover, pause not exclusive, one engaged per threat, fb-15 give-up/override, fb-16 no-drop tools, 0.7.3");
+        System.out.println("PASS: idle self-defense triggers, flee at 12, armed melee to 6, unarmed-ranged cover, pause not exclusive, one engaged per threat, fb-15 give-up/override, fb-16 no-drop tools, 0.7.4");
     }
 
     private static void check(boolean ok, String message) {

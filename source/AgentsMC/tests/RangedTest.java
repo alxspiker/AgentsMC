@@ -85,11 +85,11 @@ public final class RangedTest {
         check(fight.contains("bow") && fight.contains("6-24"), "fight mentions ranged");
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.3".equals(version), "plugin.yml version: " + version);
-        check("0.7.3".equals(AgentVersion.current(null)), "status version fallback");
-        check(AgentVersion.parseVersion("name: AgentsMC\nversion: 0.7.3\n").equals("0.7.3"), "parse version");
+        check("0.7.4".equals(version), "plugin.yml version: " + version);
+        check("0.7.4".equals(AgentVersion.current(null)), "status version fallback");
+        check(AgentVersion.parseVersion("name: AgentsMC\nversion: 0.7.4\n").equals("0.7.4"), "parse version");
 
-        System.out.println("PASS: ranged aim/lead/gravity, draw/charge/speed, Infinity consume, LOS, 6-24/melee-4, craft bow/arrow/crossbow, shoot catalog, 0.7.3");
+        System.out.println("PASS: ranged aim/lead/gravity, draw/charge/speed, Infinity consume, LOS, 6-24/melee-4, craft bow/arrow/crossbow, shoot catalog, 0.7.4");
     }
 
     private static void check(boolean ok, String message) {

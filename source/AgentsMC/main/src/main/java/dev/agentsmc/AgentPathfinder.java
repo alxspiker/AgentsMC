@@ -28,6 +28,8 @@ final class AgentPathfinder {
     static final int MAX_EXPAND = 20_000;
     static final int MAX_DROP = 3;
     static final int MAX_WATER_DROP = 12;
+    /** 0.7.4: extra cost per swim step with the head under water, so routes stay on the surface unless diving is needed. */
+    static final double SUBMERGED_COST = 2.0;
     /** Player hitbox is 1.8; feet+head must both be clear. */
     static final int BODY_BLOCKS = 2;
     /** Extra A* cost for standing at the foot of a +2 face so the search walks around. */
@@ -658,7 +660,7 @@ final class AgentPathfinder {
             case JUMP -> step + 0.6;
             case DROP -> step + 0.25 * (y - ny);
             case CLIMB -> (adx + adz == 0) ? 1.3 : 1.4;
-            case SWIM -> (adx + adz == 0) ? 1.3 : step;
+            case SWIM -> ((adx + adz == 0) ? 1.3 : step) + (submerged(grid, nx, ny, nz) ? SUBMERGED_COST : 0);
             case DIG -> {
                 if (adx + adz == 0) yield DIG_SHAFT;
                 int dug = digCount(grid, nx, ny, nz);
@@ -836,6 +838,11 @@ final class AgentPathfinder {
 
     private static boolean tryStand(Grid grid, int x, int y, int z) {
         return grid.usable(x, y, z) && grid.standable(x, y, z);
+    }
+
+    /** Head cell is water: the body cannot breathe there. */
+    static boolean submerged(Grid grid, int x, int y, int z) {
+        return grid != null && grid.water(x, y, z) && grid.water(x, y + 1, z);
     }
 
     private static boolean inWater(Grid grid, Node n) { return inWater(grid, n.x, n.y, n.z); }

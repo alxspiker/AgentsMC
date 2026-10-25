@@ -101,7 +101,7 @@ public final class AgentsMC extends Citizens {
             AgentRespawn.loadHumans();
             restoreSpawnedAgents();
             for(NPC body:CitizensAPI.getNPCRegistry())if(body.data().has(AGENT_ID)){configureBody(body);AgentRestart.idle(body);}
-            Bukkit.getScheduler().runTaskTimer(this,()->{for(NPC body:CitizensAPI.getNPCRegistry())if(body.data().has(AGENT_ID)){reconcile(body);keepChunk(body);if(bodyUp(body)&&body.getEntity() instanceof Player sampled){try{AgentNavigation.recoverFromAir(body,sampled);}catch(RuntimeException ignored){}AgentEvents.sample(body,sampled);}}},10,10);
+            Bukkit.getScheduler().runTaskTimer(this,()->{for(NPC body:CitizensAPI.getNPCRegistry())if(body.data().has(AGENT_ID)){reconcile(body);keepChunk(body);if(bodyUp(body)&&body.getEntity() instanceof Player sampled){try{AgentNavigation.swimTick(body,sampled);}catch(RuntimeException ignored){}try{AgentNavigation.recoverFromAir(body,sampled);}catch(RuntimeException ignored){}AgentEvents.sample(body,sampled);}}},10,10);
             Bukkit.getScheduler().runTaskTimer(this,()->{boolean changed=false;for(NPC body:CitizensAPI.getNPCRegistry())if(body.data().has(AGENT_ID)&&!awaitingRestore.contains(body.getUniqueId())){changed|=saveInventory(body);changed|=AgentHunger.save(body);}if(changed)storeNPCsNow();},10,10);
             getLogger().info("AgentsMC body watchdog active (logger check)");
             Bukkit.getPluginManager().registerEvents(new AgentFurnaceLog(), this);

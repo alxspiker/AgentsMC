@@ -95,8 +95,8 @@ public final class WorldTimeTest {
         check(AgentActionProgram.concurrentSafeAction("observe"), "observe stays concurrent");
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.3".equals(version), "plugin.yml version: " + version);
-        System.out.println("PASS: worldTime/time24/time12, 19595 is 1:35 AM, sunset 0 after dusk, frozen daylight, 0.7.3");
+        check("0.7.4".equals(version), "plugin.yml version: " + version);
+        System.out.println("PASS: worldTime/time24/time12, 19595 is 1:35 AM, sunset 0 after dusk, frozen daylight, 0.7.4");
     }
 
     private static void check(boolean ok, String message) {

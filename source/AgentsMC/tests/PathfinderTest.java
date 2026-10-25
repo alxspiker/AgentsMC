@@ -79,6 +79,42 @@ public final class PathfinderTest {
         System.out.println("PASS: 0.7.3 snow layers: 1 layer = air, (layers-1)/8 collision, arrival on snow nodes");
     }
 
+    /** 0.7.4: swim along the water surface, never snap swimmers to the seabed, surface for air. */
+    static void water074() {
+        // Live repro: sea floor y55, water y56..62, air from y63; target water surface (76,62,228).
+        MapGrid g = new MapGrid(-64, 320);
+        for (int x = 60; x <= 80; x++) for (int z = 220; z <= 232; z++) {
+            g.set(x, 55, z, "sand");
+            for (int y = 56; y <= 62; y++) g.set(x, y, z, "water");
+        }
+        AgentPathfinder.Result r = AgentPathfinder.plan(62, 62, 226, 76, 62, 228, g, new AgentPathfinder.Options());
+        check(r.fail == null && r.path != null, "plan over water: " + r.fail);
+        for (int[] wp : r.path) {
+            check(wp[1] >= 62, "surface swim stays at y>=62 (no seabed): " + java.util.Arrays.toString(wp));
+            check(!AgentPathfinder.submerged(g, wp[0], wp[1], wp[2]), "head above water: " + java.util.Arrays.toString(wp));
+        }
+        check(r.path.get(r.path.size() - 1)[0] == 76 && r.path.get(r.path.size() - 1)[2] == 228, "reaches water target");
+        check(AgentPathfinder.submerged(g, 70, 58, 226) && !AgentPathfinder.submerged(g, 70, 62, 226), "submerged = head cell water");
+        // A dive the target needs is still allowed (seabed target).
+        AgentPathfinder.Result dive = AgentPathfinder.plan(62, 62, 226, 66, 56, 226, g, new AgentPathfinder.Options());
+        check(dive.fail == null && dive.path.get(dive.path.size() - 1)[1] == 56, "dive to seabed target: " + dive.fail);
+        // No air snap while in or right over water (the old same_column_air_snap).
+        check(AgentNavigation.waterColumn(false, true, false), "hover over water is not airborne");
+        check(AgentNavigation.waterColumn(true, true, true) && !AgentNavigation.waterColumn(false, false, false), "water column");
+        // Breath hysteresis: 300 max air; surface at <=90, keep surfacing until >=285.
+        check(!AgentNavigation.needsAir(300, 300, false) && !AgentNavigation.needsAir(91, 300, false), "plenty of air");
+        check(AgentNavigation.needsAir(90, 300, false) && AgentNavigation.needsAir(0, 300, false), "low air surfaces");
+        check(AgentNavigation.needsAir(200, 300, true) && !AgentNavigation.needsAir(290, 300, true), "resume dive after refill");
+        check(!AgentNavigation.needsAir(0, 0, false), "no max air, no surfacing");
+        // Vertical swim: surfacing always rises with wet head even when the waypoint is deeper.
+        check(AgentNavigation.swimVy(true, true, true, 57.0, 56.0, -0.2) >= AgentNavigation.SWIM_UP, "low air ascends over a dive");
+        check(AgentNavigation.swimVy(true, true, false, 57.0, 56.0, -0.2) < 0, "dive kept when air is fine");
+        check(AgentNavigation.swimVy(true, true, false, 60.0, 62.0, -0.05) > 0, "submerged toward surface waypoint rises");
+        check(AgentNavigation.swimVy(true, false, false, 62.2, 62.0, 0.0) == 0.0, "at surface no forced bob");
+        check(AgentNavigation.swimVy(false, false, true, 64.0, 64.0, 0.0) == 0.0, "dry land unaffected");
+        System.out.println("PASS: 0.7.4 water: surface swim, seabed dive on demand, no air snap over water, low-air ascend");
+    }
+
     /** 0.7.0: snow step-up, 1-wide hole avoid/exit, portal helpers. */
     static void fb0680() {
         // fb-39/40: feet on 1-layer snow (88.125) to snow one block up (89.125) is a normal jump.
@@ -137,6 +173,7 @@ public final class PathfinderTest {
         snowLayers();
         fb0680();
         snowLayers073();
+        water074();
         longWalk();
         stuckClock();
         pocketLeaves();

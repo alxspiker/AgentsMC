@@ -39,6 +39,12 @@ final class AgentNavigation {
     static final double AIR_SNAP_DROP=8;
     /** Jump/knockback is ~0.4s; require a real hang before snapping down. */
     static final long AIR_RECOVER_MS=1_500;
+    /** 0.7.4: surface to breathe at or below this share of max air; dive again once air is back above RESUME_AIR. */
+    static final double LOW_AIR=.3,RESUME_AIR=.95;
+    /** Upward swim velocity while surfacing or floating idle. */
+    static final double SWIM_UP=.3,FLOAT_UP=.12;
+    static final String SURFACING="surfacingForAir";
+    private static final Set<UUID> surfacing=ConcurrentHashMap.newKeySet();
     static boolean success(String status){return "arrived".equals(status)||"arrived_near".equals(status);}
     static String arrival(double distanceSquared){return distanceSquared<=EXACT*EXACT?"arrived":distanceSquared<=TOLERANCE*TOLERANCE?"arrived_near":null;}
     static String arrival(Location here,Location target){
@@ -262,6 +268,11 @@ final class AgentNavigation {
         double vy=0;
         try{vy=player.getVelocity().getY();}catch(RuntimeException ignored){}
         vy=climbVelocity(here.getY(),to.getY(),climbCapY,move,vy);
+        Water w=water(player);
+        if(w.feet){
+            boolean up=updateSurfacing(player,w);
+            vy=swimVy(w.feet,w.head,up,here.getY(),to.getY(),vy);
+        }
         try{player.setVelocity(new Vector(v[0],vy,v[1]));}catch(RuntimeException ignored){}
         // Jumping via setVelocity does not reset vanilla fallDistance the way a
         // player jump does; clear it or repeated climb attempts accumulate and
@@ -761,6 +772,7 @@ final class AgentNavigation {
         if(t!=null){if(!t.boat)verifyArrival(npc,t);r.put("requestId",t.id);r.put("status",t.status);r.put("reason",t.reason);r.put("target",AgentPresentation.point(t.target));r.put("requestedAt",t.requestedAt);r.put("lastProgressAt",t.lastProgressAt);r.put("travelled",t.travelled);try{if(AgentsMC.bodyUp(npc)&&npc.getEntity()!=null&&t.target!=null)r.put("remaining",Math.round(npc.getEntity().getLocation().distance(t.target)*10)/10.0);}catch(RuntimeException ignored){}r.put("collecting",collectionTargets.containsKey(npc.getUniqueId()));if(t.target!=null&&t.target.getWorld()!=null)r.put("targetWorld",t.target.getWorld().getName());if(t.boat)r.put("mode","boat");if(t.gridPath){r.put("mode","path");r.put("replans",t.replans);if(t.path!=null)r.put("waypoints",t.path.size());}if(t.dig){r.put("unstuck",t.unstuck);if(!t.lastUnstick.isEmpty())r.put("lastUnstick",t.lastUnstick);}}else r.put("status","idle");
         try{if(AgentsMC.bodyUp(npc)&&npc.getEntity()!=null){World w=npc.getEntity().getWorld();noteWorld(npc,w);r.put("world",w.getName());r.put("environment",w.getEnvironment().name());}}catch(RuntimeException ignored){}
         Map<String,Object> moved=lastWorldChange(npc);if(moved!=null)r.put("worldChange",moved);
+        if(surfacing(npc.getUniqueId()))r.put(SURFACING,true);
         Map<String,Object> air=peekAirRecovery(npc.getUniqueId());
         if(air!=null)r.putAll(air);
         return r;}
@@ -793,6 +805,15 @@ final class AgentNavigation {
         AgentSafeSpawn.Probe probe;
         try{probe=worldProbe(here.getWorld());}catch(RuntimeException ignored){return null;}
         int bx=AgentSafeSpawn.blockCoord(here.getX()),by=AgentSafeSpawn.blockCoord(here.getY()),bz=AgentSafeSpawn.blockCoord(here.getZ());
+        // 0.7.4: floating on or swimming in water is not airborne. Water cells are "open"
+        // to the probe, so the old check snapped swimmers to the seabed and they drowned.
+        boolean wet=false;
+        try{
+            World world=here.getWorld();
+            wet=player.isInWater()||waterColumn(AgentBoats.isWaterBlock(world.getBlockAt(bx,by,bz)),
+                    AgentBoats.isWaterBlock(world.getBlockAt(bx,by-1,bz)),AgentBoats.isWaterBlock(world.getBlockAt(bx,by-2,bz)));
+        }catch(RuntimeException ignored){}
+        if(wet){clearAirborne(id);return null;}
         boolean openHere=true,supported=false,groundClose=false;
         try{
             openHere=probe.open(bx,by,bz);
@@ -828,6 +849,72 @@ final class AgentNavigation {
                     AgentEvents.data("x",below[0]+.5,"fromY",here.getY(),"toY",dest.getY(),"z",below[2]+.5));
         }catch(RuntimeException ignored){}
         return rec;
+    }
+    /** Feet, the cell below, or two below is water: the body is swimming/floating, never an air snap. */
+    static boolean waterColumn(boolean feet,boolean below,boolean below2){return feet||below||below2;}
+    /**
+     * Hysteresis for breath: start surfacing at or below {@link #LOW_AIR} of max air,
+     * keep surfacing until air is back to {@link #RESUME_AIR}, then the trip may dive again.
+     */
+    static boolean needsAir(int air,int maxAir,boolean alreadySurfacing){
+        if(maxAir<=0)return false;
+        if(alreadySurfacing)return air<maxAir*RESUME_AIR;
+        return air<=maxAir*LOW_AIR;
+    }
+    /**
+     * Vertical swim velocity. Surfacing for air always rises while the head is wet.
+     * Otherwise the body floats up to the surface unless the waypoint is deeper
+     * (a dive the path needs), in which case the walker's descent is kept.
+     */
+    static double swimVy(boolean feetInWater,boolean headInWater,boolean surfacingForAir,double hereY,double waypointY,double walkVy){
+        if(!feetInWater)return walkVy;
+        if(surfacingForAir)return headInWater?Math.max(walkVy,SWIM_UP):Math.max(walkVy,0);
+        if(waypointY<hereY-.5)return walkVy;
+        if(headInWater)return Math.max(walkVy,waypointY>hereY+.4?SWIM_UP:FLOAT_UP);
+        return walkVy;
+    }
+    record Water(boolean feet,boolean head){}
+    static Water water(Player player){
+        boolean feet=false,head=false;
+        try{
+            Location l=player.getLocation();
+            feet=player.isInWater()||AgentBoats.isWaterBlock(l.getBlock());
+            head=AgentBoats.isWaterBlock(player.getEyeLocation().getBlock());
+        }catch(RuntimeException ignored){}
+        return new Water(feet||head,head);
+    }
+    static boolean surfacing(UUID id){return id!=null&&surfacing.contains(id);}
+    static boolean updateSurfacing(Player player,Water w){
+        UUID id=player.getUniqueId();
+        boolean was=surfacing.contains(id);
+        int air=0,max=0;
+        try{air=player.getRemainingAir();max=player.getMaximumAir();}catch(RuntimeException ignored){return was;}
+        boolean now=w.feet&&needsAir(air,max,was);
+        if(now&&!was){
+            surfacing.add(id);
+            try{AgentEvents.emit(AgentEvents.agentId(net.citizensnpcs.api.CitizensAPI.getNPCRegistry().getNPC(player)),"nav.surfacing_for_air",AgentEvents.data("air",air,"maxAir",max,"y",player.getLocation().getY()));}catch(RuntimeException ignored){}
+        }else if(!now&&was)surfacing.remove(id);
+        return now;
+    }
+    /**
+     * Every 10 ticks: an idle body in water floats to the surface (no sinking to the
+     * seabed), and any body low on air swims up to breathe, trip or not.
+     */
+    static void swimTick(NPC npc,Player player){
+        if(npc==null||player==null)return;
+        Water w=water(player);
+        if(!w.feet){surfacing.remove(player.getUniqueId());return;}
+        try{if(AgentBoats.ridingBoat(player))return;}catch(RuntimeException ignored){}
+        boolean up=updateSurfacing(player,w);
+        Trip t=trips.get(npc.getUniqueId());
+        boolean moving=t!=null&&inProgress(t.status)&&t.gridPath;
+        if(moving&&!up)return; // driveWalk owns vy on a trip
+        if(!w.head&&!up)return;
+        try{
+            Vector v=player.getVelocity();
+            double vy=swimVy(true,w.head,up,player.getLocation().getY(),player.getLocation().getY()+1,v.getY());
+            player.setVelocity(new Vector(v.getX(),vy,v.getZ()));
+        }catch(RuntimeException ignored){}
     }
     static void clearAirborne(UUID id){if(id!=null)airborneSince.remove(id);}
     /**
