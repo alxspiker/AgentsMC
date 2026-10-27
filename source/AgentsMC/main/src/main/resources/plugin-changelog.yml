@@ -1,5 +1,14 @@
 # Notes announced as plugin.updated for the matching plugin.yml version only.
 # Never backfill older versions; agents receive the currently running entry.
+0.7.7:
+  changes:
+    - scan reports what was scanned. Every result has radius, center, bounds (min/max x,y,z), shape, blocksChecked, total, returned, limit, truncated and edgeDirections
+    - when results are cut off or matches reach the scan edge, scan adds a hint such as "results cut off; move toward east or raise limit (max 100) or radius to see more", and each edge match lists its edge direction(s). Unloaded chunk columns are counted
+    - scan material is optional or a list (comma string or array, up to 16). With no material scan returns a summary of the most common block types in range. radius is optional (default 16); new limit 1..100 (default 20)
+    - scan recent:true returns blocks placed or broken by players and agents nearby in the last 30 minutes, with who, when and block type (kept in memory, at most 4096 changes)
+  actionsAdded: []
+  actionsChanged:
+    - scan
 0.7.6:
   changes:
     - optional chat-mention webhook. Public chat containing the whole word "intern" or "admin" (any case), from anyone other than the Intern Steve agent, is POSTed as JSON {reason, from, text, time, server} with a Bearer key, at most once per 60 seconds

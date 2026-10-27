@@ -110,6 +110,7 @@ public final class AgentsMC extends Citizens {
             Bukkit.getScheduler().runTaskTimer(this,()->{boolean changed=false;for(NPC body:CitizensAPI.getNPCRegistry())if(body.data().has(AGENT_ID)&&!awaitingRestore.contains(body.getUniqueId())){changed|=saveInventory(body);changed|=AgentHunger.save(body);}if(changed)storeNPCsNow();},10,10);
             getLogger().info("AgentsMC body watchdog active (logger check)");
             Bukkit.getPluginManager().registerEvents(new AgentFurnaceLog(), this);
+            Bukkit.getPluginManager().registerEvents(new AgentBlockLog(), this);
             Bukkit.getPluginManager().registerEvents(new AgentRespawn.Lock(), this);
             Bukkit.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
                 @org.bukkit.event.EventHandler(priority=org.bukkit.event.EventPriority.MONITOR)

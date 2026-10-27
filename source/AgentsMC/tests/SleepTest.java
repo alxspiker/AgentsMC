@@ -150,7 +150,7 @@ public final class SleepTest {
             check(up != null && !bedCells.contains(up[0] + "," + up[2]), "step-up spot not on bed " + f);
         }
         check(AgentSleep.wakeSpot(0, 64, 0, "NORTH", c -> false) == null, "no spot -> null (fallback on top of bed)");
-        check("0.7.6".equals(version), "plugin.yml version: " + version);
+        check("0.7.7".equals(version), "plugin.yml version: " + version);
         System.out.println("PASS: sleep/respawn encode, bed claims visible, human player claims, steal refused, death-camp, voluntary home, daytime sleep note, pose wake, bed head/facing x4, dawn auto-wake, wake beside bed, 0.7.5 bed lock + fb-51 respawn at bed");
     }
 

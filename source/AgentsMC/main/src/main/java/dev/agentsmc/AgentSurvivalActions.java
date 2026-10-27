@@ -298,28 +298,67 @@ final class AgentSurvivalActions {
                 return r;
             }
             case "scan": {
-                fields(o, List.of("material", "block", "item"), "action", "agent", "radius");
-                check(o.has("material")||o.has("block")||o.has("item"),"scan requires material");
-                String scanName=o.has("material")?str(o,"material"):o.has("block")?str(o,"block"):str(o,"item");
-                Material wanted=Material.matchMaterial(AgentPlacement.blockKey(scanName));
-                check(wanted!=null && wanted.isBlock(),"Unknown block material");
-                int radius=num(o,"radius",1,32); List<Map<String,Object>> found=new ArrayList<>();
-                Location at=p.getLocation();int total=0;
+                fields(o, List.of("material", "block", "item", "radius", "limit", "recent"), "action", "agent");
+                String key=o.has("material")?"material":o.has("block")?"block":o.has("item")?"item":null;
+                java.util.Set<Material> wanted=new java.util.LinkedHashSet<>();
+                if(key!=null){
+                    List<String> names=new ArrayList<>();
+                    if(o.get(key).isJsonArray()){for(var el:o.getAsJsonArray(key)){check(el.isJsonPrimitive()&&el.getAsJsonPrimitive().isString(),"material list must hold strings");names.add(el.getAsString());}}
+                    else for(String part:str(o,key).split(","))if(!part.isBlank())names.add(part.trim());
+                    check(!names.isEmpty()&&names.size()<=16,"material list must have 1..16 names");
+                    for(String n:names){Material m=Material.matchMaterial(AgentPlacement.blockKey(n));check(m!=null&&m.isBlock(),"Unknown block material: "+n);wanted.add(m);}
+                }
+                int radius=o.has("radius")?num(o,"radius",1,32):AgentScan.DEFAULT_RADIUS;
+                int limit=o.has("limit")?num(o,"limit",1,AgentScan.MAX_LIMIT):AgentScan.DEFAULT_LIMIT;
+                boolean recent=o.has("recent")&&o.get("recent").isJsonPrimitive()&&o.get("recent").getAsBoolean();
+                Location at=p.getLocation();int cx=at.getBlockX(),cy=at.getBlockY(),cz=at.getBlockZ();
+                int minY=p.getWorld().getMinHeight(),maxY=p.getWorld().getMaxHeight();
+                if(recent&&key==null){
+                    Map<String,Object> r=AgentBlockLog.near(p.getWorld().getName(),cx,cy,cz,radius,limit,System.currentTimeMillis());
+                    Map<String,Object> res=AgentScan.meta(cx,cy,cz,radius,minY,maxY,0,(Integer)r.get("total"),(Integer)r.get("returned"),(Boolean)r.get("truncated"),java.util.Set.of(),limit,0);
+                    res.put("mode","recent");res.put("changes",r.get("changes"));res.put("windowMinutes",r.get("windowMinutes"));
+                    return res;
+                }
+                List<Map<String,Object>> found=new ArrayList<>();Map<String,Integer> counts=new java.util.HashMap<>();
+                long checked=0;int total=0,unloaded=0;
                 for(int x=-radius;x<=radius;x++) for(int z=-radius;z<=radius;z++) {
-                    int bx=at.getBlockX()+x,bz=at.getBlockZ()+z;
-                    if (!p.getWorld().isChunkLoaded(bx>>4,bz>>4)) continue;
+                    int bx=cx+x,bz=cz+z;
+                    if (x*x+z*z>radius*radius) continue;
+                    if (!p.getWorld().isChunkLoaded(bx>>4,bz>>4)) {unloaded++;continue;}
                     for(int y=-radius;y<=radius;y++) {
-                        int by=at.getBlockY()+y;
-                        if(by<p.getWorld().getMinHeight() || by>=p.getWorld().getMaxHeight()) continue;
-                        int dy=by-at.getBlockY();
-                        if(!AgentReach.scanInRadius(x,dy,z,radius))continue;
-                        if(p.getWorld().getBlockAt(bx,by,bz).getType()==wanted) {
-                            total++;found.add(out("x",bx,"y",by,"z",bz,"d",Math.round(Math.sqrt((double)x*x+(double)dy*dy+(double)z*z)*10)/10.0));
+                        int by=cy+y;
+                        if(by<minY || by>=maxY) continue;
+                        if(!AgentReach.scanInRadius(x,y,z,radius))continue;
+                        checked++;
+                        Material type=p.getWorld().getBlockAt(bx,by,bz).getType();
+                        if(wanted.isEmpty()){if(!type.isAir())counts.merge(type.name(),1,Integer::sum);continue;}
+                        if(wanted.contains(type)) {
+                            total++;Map<String,Object> m=out("x",bx,"y",by,"z",bz,"d",Math.round(Math.sqrt((double)x*x+(double)y*y+(double)z*z)*10)/10.0);
+                            if(wanted.size()>1)m.put("material",type.name());
+                            counts.merge(type.name(),1,Integer::sum);
+                            java.util.Set<String> e=AgentScan.edgeDirections(x,y,z,radius);if(!e.isEmpty())m.put("edge",new ArrayList<>(e));
+                            found.add(m);
                         }
                     }
                 }
-                found.sort(java.util.Comparator.comparingDouble(m->(Double)m.get("d")));
-                return out("matches",new ArrayList<>(found.subList(0,Math.min(20,found.size()))),"total",total,"truncated",total>20);
+                Map<String,Object> res;
+                if(wanted.isEmpty()){
+                    List<Map<String,Object>> top=AgentScan.summary(counts,AgentScan.SUMMARY_TOP);
+                    res=AgentScan.meta(cx,cy,cz,radius,minY,maxY,checked,counts.size(),top.size(),counts.size()>top.size(),java.util.Set.of(),AgentScan.SUMMARY_TOP,unloaded);
+                    res.put("mode","summary");res.put("counts",top);
+                    if(counts.size()>top.size())res.put("hint","only the "+top.size()+" most common of "+counts.size()+" block types are listed; pass material to locate one type");
+                } else {
+                    found.sort(java.util.Comparator.comparingDouble(m->(Double)m.get("d")));
+                    java.util.Set<String> edges=new java.util.LinkedHashSet<>();
+                    for(Map<String,Object> m:found)if(m.get("edge") instanceof List<?> l)for(Object d:l)edges.add(String.valueOf(d));
+                    int returned=Math.min(limit,found.size());
+                    res=AgentScan.meta(cx,cy,cz,radius,minY,maxY,checked,total,returned,total>limit,edges,limit,unloaded);
+                    res.put("mode","match");res.put("materials",wanted.stream().map(Material::name).toList());
+                    res.put("matches",new ArrayList<>(found.subList(0,returned)));
+                    if(wanted.size()>1){List<Map<String,Object>> c=new ArrayList<>();for(Material w:wanted)c.add(out("material",w.name(),"count",counts.getOrDefault(w.name(),0)));res.put("counts",c);}
+                }
+                if(recent){Map<String,Object> r=AgentBlockLog.near(p.getWorld().getName(),cx,cy,cz,radius,limit,System.currentTimeMillis());res.put("recent",r);}
+                return res;
             }
             case "scan_entities": {
                 fields(o,"action","agent","type","radius");

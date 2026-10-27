@@ -46,7 +46,7 @@ public final class ProtectTest {
         check(!AgentCombat.followShouldRepath(false, 12, 10, 6, 0, 0, 500, true), "protect no_path waits");
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.6".equals(version), "plugin.yml version: " + version);
+        check("0.7.7".equals(version), "plugin.yml version: " + version);
 
         System.out.println("PASS: protect retreat hysteresis, eat 32-tick cooldown, open downhill, chase radius+4, overlook hold, 0.7.4");
     }

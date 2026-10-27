@@ -90,7 +90,7 @@ final class AgentActionCatalog {
         add("command", "Villagers & Multiplayer", "Command", "");
         add("inspect_block", "Observation & Knowledge", "Inspect a nearby block. Signs include lines/text (front) and back when written. Beds and respawn anchors include claimed/claimedBy/mine for agents and human players (player:true) so a shared-base agent can see who already set spawn there", "x,y,z");
         add("inspect_entity", "Observation & Knowledge", "Inspect entity", "uuid");
-        add("scan", "Observation & Knowledge", "Find nearby block matches without loading chunks", "material,radius");
+        add("scan", "Observation & Knowledge", "Scan a sphere around the agent without loading chunks. material may be one name, a comma list or an array; omit it for a summary of block counts in range. recent:true adds blocks placed/broken by players and agents in the last 30 minutes (who, when, block). Every result reports radius, center, bounds (min/max x,y,z), blocksChecked, total, returned, truncated, edgeDirections and a hint such as \"move toward east or raise radius/limit\" when results are cut off or reach the scan edge", "material,radius,limit,recent");
         add("scan_entities", "Observation & Knowledge", "Find nearby entities of a type without loading chunks", "type,radius");
         add("scan_box", "Observation & Knowledge", "Bounded region scan (minX..maxX, minY..maxY, minZ..maxZ, volume cap 4096). Returns per-layer material grids (rows +z, cols +x; . air, ? unloaded, NAME solid) plus a solids list and coverage/complete/unloaded so out-of-range or unloaded cells are never mistaken for AIR. Never loads chunks. Optional fromX/fromY/fromZ + toX/toY/toZ runs the same goto A* and reports reachable plus the first blocking cell", "minX,minY,minZ,maxX,maxY,maxZ,fromX,fromY,fromZ,toX,toY,toZ");
         add("region", "Observation & Knowledge", "Alias of scan_box: bounded min/max region scan with coverage flags and optional A* connectivity", "minX,minY,minZ,maxX,maxY,maxZ,fromX,fromY,fromZ,toX,toY,toZ");
@@ -139,7 +139,7 @@ final class AgentActionCatalog {
         if((action.equals("portal")||action.equals("use_portal"))&&field.equals("radius"))return "optional integer 1..16, default 8";
         if((action.equals("portal")||action.equals("use_portal"))&&field.equals("timeout"))return "optional integer seconds 5..60, default 20";
         if((action.equals("portal")||action.equals("use_portal"))&&field.equals("vanillaOnly"))return "optional boolean, default false; true disables the plugin fallback teleport";
-        if(field.equals("radius"))return action.equals("protect")||action.equals("heightmap")?"optional integer 1..32, default 16":action.equals("walkmap")?"optional integer 1..24, default 12":action.equals("survey")?"optional integer 1..12, default 8":action.equals("scan")||action.equals("scan_entities")?"integer 1..32":action.equals("observe")?"integer 1..8":"integer 1..4";
+        if(field.equals("radius"))return action.equals("protect")||action.equals("heightmap")?"optional integer 1..32, default 16":action.equals("walkmap")?"optional integer 1..24, default 12":action.equals("survey")?"optional integer 1..12, default 8":action.equals("scan")?"optional integer 1..32, default 16":action.equals("scan_entities")?"integer 1..32":action.equals("observe")?"integer 1..8":"integer 1..4";
         if(field.equals("slot")||field.equals("from")||field.equals("to")||field.equals("first")||field.equals("second")) {
             if(action.equals("worldmap")&&(field.equals("from")||field.equals("to")))return "optional room id, here, outdoors, or object type (chest, door)";
             if(action.equals("place")||action.equals("plant"))return "optional integer 0..8";
@@ -152,6 +152,7 @@ final class AgentActionCatalog {
         }
         if(field.equals("amount"))return action.equals("transfer")?"integer 1..2304":action.equals("craft")?"integer 1..64, output count, rounded up to recipe yield":action.equals("give")||action.equals("throw")?"optional integer 1..64, default 1":"integer 1..64";
         if(field.equals("count"))return action.equals("craft")?"optional alias of amount (output count 1..64)":"scalar; validated by the action-specific contract";
+        if(field.equals("recent"))return "optional boolean; include blocks placed/broken nearby in the last 30 minutes (alone, without material, returns only those)";
         if(field.equals("enabled"))return "boolean";
         if(field.equals("dig"))return "optional boolean, default false";
         if(field.equals("includeBlocks"))return "optional boolean";
@@ -171,7 +172,7 @@ final class AgentActionCatalog {
         if(field.equals("since"))return "optional epoch milliseconds; only entries at or after this time";
         if(field.equals("after"))return "optional exclusive sequence; messages newer than this";
         if(field.equals("before"))return "optional exclusive sequence; older page ending before this";
-        if(field.equals("limit"))return action.equals("chat_log")?"optional integer 1..100, default 50":"scalar; validated by the action-specific contract";
+        if(field.equals("limit"))return action.equals("scan")?"optional integer 1..100 matches returned, default 20":action.equals("chat_log")?"optional integer 1..100, default 50":"scalar; validated by the action-specific contract";
         if(field.equals("scope"))return "optional public or private; default public";
         if(field.equals("serverSessionId"))return "optional current-run id; mismatch returns reset:true";
         if(field.equals("id"))return action.equals("feedback_resolve")?"feedback id from feedback_list, e.g. fb-1":"scalar; validated by the action-specific contract";
@@ -179,6 +180,7 @@ final class AgentActionCatalog {
         if(field.equals("message"))return "string, 1..256 characters";
         if(field.equals("material")||field.equals("item")||field.equals("block")) {
             if(action.equals("eat")||action.equals("drink")||action.equals("heal")||action.equals("give")||action.equals("plant")||action.equals("build_plan")||action.equals("preflight"))return "optional Minecraft material name or namespaced key";
+            if(action.equals("scan"))return "optional block name, comma list or array of up to 16; omit for a block-count summary";
             if(action.equals("stonecut")&&field.equals("material"))return "optional input block; default any owned matching recipe";
             return "Minecraft material name or namespaced key";
         }
