@@ -18,3 +18,10 @@ and writes `AgentsMC.jar`. The output JAR contains a `bridge.yml` with no token.
 
 `AgentsMC-initial-build.jar` is only the build input. Deploy `AgentsMC.jar`.
 Never commit JARs or a filled-in `bridge.yml`.
+
+## Optional chat-mention webhook (0.7.6)
+
+To enable it on your own server, create
+`source/AgentsMC/main/src/main/resources/intern-webhook.properties` with `url=` and `key=`
+before building. The script bundles it when present. The file is gitignored; never commit it,
+and never publish a jar built with it. Without the file the feature stays off.

@@ -56,9 +56,9 @@ public final class BoatTest {
         check(AgentBoats.kind("OAK_BOAT").equals("boat") && AgentBoats.kind("MINECART").equals("minecart"), "kind");
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.5".equals(version), "plugin.yml version: " + version);
-        check("0.7.5".equals(AgentVersion.current(null)), "status version fallback: " + AgentVersion.current(null));
-        check(AgentVersion.parseVersion("name: AgentsMC\nversion: 0.7.5\n").equals("0.7.5"), "parse version");
+        check("0.7.6".equals(version), "plugin.yml version: " + version);
+        check("0.7.6".equals(AgentVersion.current(null)), "status version fallback: " + AgentVersion.current(null));
+        check(AgentVersion.parseVersion("name: AgentsMC\nversion: 0.7.6\n").equals("0.7.6"), "parse version");
         check(!AgentVersion.agentsMc("2.0.44-SNAPSHOT (build 4268)"), "reject Citizens version");
 
         List<String> actions = AgentActionCatalog.advertisedNames();

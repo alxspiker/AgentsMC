@@ -53,6 +53,9 @@ final class AgentFeedback {
         }
     }
 
+    /** 0.7.6: notified (outside the lock) after each new entry is saved; must not block. */
+    static volatile java.util.function.Consumer<Entry> onSubmit;
+
     static void attach(Path path) {
         synchronized (LOCK) {
             file = path;
@@ -107,6 +110,8 @@ final class AgentFeedback {
             entries.add(e);
             saveLocked();
         }
+        java.util.function.Consumer<Entry> listener = onSubmit;
+        if (listener != null) try { listener.accept(e); } catch (Throwable ignored) {}
         return map("id", e.id, "status", e.status, "category", e.category, "text", e.text, "saved", true);
     }
 

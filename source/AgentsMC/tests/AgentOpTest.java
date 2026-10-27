@@ -59,7 +59,7 @@ public final class AgentOpTest {
         check(AgentActionCatalog.executable("op"), "op in catalog");
         check(BridgeProtocol.dropActionResult("Bridge POST /api/server/actions/x returned HTTP 404 sentKeys={}") , "404 dropped");
         check(!BridgeProtocol.dropActionResult("Bridge POST /api/server/actions/x returned HTTP 409"), "409 kept");
-        System.out.println("PASS: op grant persistence, allow-list (no stop), args, time, fill/killmobs caps, 404 result drop, 0.7.5");
+        System.out.println("PASS: op grant persistence, allow-list (no stop), args, time, fill/killmobs caps, 404 result drop, 0.7.6");
     }
     private static void fails(Runnable r, String what) {
         try { r.run(); } catch (IllegalArgumentException expected) { return; }

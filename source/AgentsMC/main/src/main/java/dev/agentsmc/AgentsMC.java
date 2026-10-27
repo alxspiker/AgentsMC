@@ -80,10 +80,15 @@ public final class AgentsMC extends Citizens {
     private final Map<java.util.UUID,Long> pendingDeathRespawn=new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<java.util.UUID,long[]> chunkTickets=new java.util.HashMap<>();
     private final Map<java.util.UUID,String> ticketWorld=new java.util.HashMap<>();
+    private AgentInternWebhook internWebhook;
     @Override
     public void onEnable() {
         INSTANCE=this;
         AgentChatLog.reset();
+        internWebhook=AgentInternWebhook.fromClasspath(getClass().getClassLoader(), Bukkit.getServer().getName()+" "+(Bukkit.getIp().isBlank()?"":Bukkit.getIp()+":")+Bukkit.getPort(), m->getLogger().warning(m));
+        if(internWebhook.enabled())getLogger().info("Intern chat-mention webhook enabled");
+        AgentInternWebhook hookRef=internWebhook;
+        AgentFeedback.onSubmit=hookRef.enabled()?e->hookRef.onFeedback(e.id,e.agentName,e.text,e.timestamp):null;
         if (Bukkit.getPluginManager().getPlugin("Citizens") != null) {
             getLogger().severe("AgentsMC includes Citizens. Remove the separate Citizens plugin before starting AgentsMC.");
             Bukkit.getPluginManager().disablePlugin(this);
@@ -253,6 +258,7 @@ public final class AgentsMC extends Citizens {
 
     @Override
     public void onDisable() {
+        AgentFeedback.onSubmit=null;
         if (bridge != null) bridge.close();
         if (ready) {
             for (NPC npc : CitizensAPI.getNPCRegistry()) if (npc.data().has(AGENT_ID)) {
@@ -1195,6 +1201,7 @@ public final class AgentsMC extends Citizens {
                 }
                 Bukkit.broadcastMessage("<" + npc.getName() + "> " + message);
                 AgentChatLog.appendPublic(npc.getName(), message, System.currentTimeMillis());
+                internChat(npc.getName(), message, System.currentTimeMillis());
                 for(NPC body:CitizensAPI.getNPCRegistry())if(body.data().has(AGENT_ID)&&bodyUp(body)&&body.getEntity() instanceof Player audience)AgentPresentation.chat(audience,npc.getName(),message);
                 for(NPC body:CitizensAPI.getNPCRegistry())if(body.data().has(AGENT_ID)&&body!=npc)AgentSocial.deliver(body.getUniqueId(),npc.getName(),"public",message,System.currentTimeMillis());
                 emitRelevantChat(npc.getName(),"public",message,player.getLocation());
@@ -1350,9 +1357,14 @@ public final class AgentsMC extends Citizens {
                         AgentEvents.data("text", text, "from", from, "kind", kind));
         }
     }
+    private void internChat(String from, String text, long now) {
+        AgentInternWebhook hook = internWebhook;
+        if (hook != null) hook.onPublicChat(from, text, now);
+    }
     private void capturePlayerChat(String name, String message, Location from) {
         long now = System.currentTimeMillis();
         AgentChatLog.appendPublic(name, message, now);
+        internChat(name, message, now);
         for (NPC body : CitizensAPI.getNPCRegistry()) if (body.data().has(AGENT_ID)) AgentSocial.deliver(body.getUniqueId(), name, "public", message, now);
         emitRelevantChat(name, "public", message, from);
     }

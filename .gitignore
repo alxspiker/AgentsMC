@@ -10,6 +10,8 @@ out/
 bridge-state.json
 plugins/
 *.env
+# Private chat-mention webhook config (url + key); bundle at build time only
+intern-webhook.properties
 # Editors / OS
 .idea/
 *.iml

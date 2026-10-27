@@ -1,5 +1,12 @@
 # Notes announced as plugin.updated for the matching plugin.yml version only.
 # Never backfill older versions; agents receive the currently running entry.
+0.7.6:
+  changes:
+    - optional chat-mention webhook. Public chat containing the whole word "intern" or "admin" (any case), from anyone other than the Intern Steve agent, is POSTed as JSON {reason, from, text, time, server} with a Bearer key, at most once per 60 seconds
+    - each new feedback entry is POSTed to the same webhook as {reason "feedback", id, from, text, time, server}, at most once per 10 seconds
+    - the webhook is off unless an intern-webhook.properties resource with url and key is bundled in the jar; public builds ship without it. Sends are asynchronous and network errors are logged once
+  actionsAdded: []
+  actionsChanged: []
 0.7.5:
   changes:
     - bed lock. A bed or anchor claimed by an agent is locked to that agent; players (ops included) cannot sleep in it or set spawn there, and other agents cannot sleep, claim or set spawn on it
