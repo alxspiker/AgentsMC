@@ -31,6 +31,16 @@ public final class AgentOpTest {
         o.addProperty("args", "Steve  diamond 3");
         check(AgentOp.subcommand(o).equals("give"), "subcommand lower");
         check(AgentOp.args(o).equals(List.of("Steve", "diamond", "3")), "args string " + AgentOp.args(o));
+        o.addProperty("args", "\"Hero Steve\" to 'Intern  Steve'");
+        check(AgentOp.args(o).equals(List.of("Hero Steve", "to", "Intern Steve")), "quoted names " + AgentOp.args(o));
+        java.util.function.Predicate<String> known = n -> n.equalsIgnoreCase("Hero Steve") || n.equalsIgnoreCase("Intern Steve");
+        check(AgentOp.mergeNames(List.of("Hero", "Steve", "to", "10", "64", "5"), known).equals(List.of("Hero Steve", "to", "10", "64", "5")), "unquoted agent name with space");
+        check(AgentOp.mergeNames(List.of("Hero", "Steve", "Intern", "Steve"), known).equals(List.of("Hero Steve", "Intern Steve")), "two spaced names");
+        check(AgentOp.mergeNames(List.of("Steve", "diamond", "3"), known).equals(List.of("Steve", "diamond", "3")), "no merge");
+        java.util.Set<Integer> solid = java.util.Set.of(64, 65);
+        check(AgentOp.safeFeetY(64, solid::contains, 320) == 66, "embedded body moves to first air");
+        check(AgentOp.safeFeetY(66, solid::contains, 320) == 66, "clear spot unchanged");
+        check(AgentOp.safeFeetY(63, solid::contains, 320) == 66, "head in floor moves up");
         JsonArray arr = new JsonArray(); arr.add("day");
         o.add("args", arr);
         check(AgentOp.args(o).equals(List.of("day")), "args array");
@@ -49,7 +59,7 @@ public final class AgentOpTest {
         check(AgentActionCatalog.executable("op"), "op in catalog");
         check(BridgeProtocol.dropActionResult("Bridge POST /api/server/actions/x returned HTTP 404 sentKeys={}") , "404 dropped");
         check(!BridgeProtocol.dropActionResult("Bridge POST /api/server/actions/x returned HTTP 409"), "409 kept");
-        System.out.println("PASS: op grant persistence, allow-list (no stop), args, time, fill/killmobs caps, 404 result drop, 0.7.4");
+        System.out.println("PASS: op grant persistence, allow-list (no stop), args, time, fill/killmobs caps, 404 result drop, 0.7.5");
     }
     private static void fails(Runnable r, String what) {
         try { r.run(); } catch (IllegalArgumentException expected) { return; }

@@ -44,6 +44,23 @@ final class AgentNavigation {
     /** Upward swim velocity while surfacing or floating idle. */
     static final double SWIM_UP=.3,FLOAT_UP=.12;
     static final String SURFACING="surfacingForAir";
+    /** 0.7.5: below this share of max air the body surfaces even mid dive leg. */
+    static final double CRITICAL_AIR=.1;
+    /** 0.7.5: within this of the dive target, finish the leg before surfacing (air permitting). */
+    static final double DIVE_FINISH=4.0;
+    /** 0.7.5: surfacing for air within this of the target counts as arrived_near, not failed. */
+    static final double DIVE_ARRIVE=3.0;
+    private static final Map<UUID,Double> diveRemain=new ConcurrentHashMap<>();
+    /** Surface now? Defers a low-air surfacing while the dive target is close unless air is critical. */
+    static boolean surfaceNow(boolean lowAir,int air,int maxAir,double remainToTarget){
+        if(!lowAir)return false;
+        if(maxAir>0&&air<=maxAir*CRITICAL_AIR)return true;
+        return !(remainToTarget<=DIVE_FINISH);
+    }
+    /** Surfacing for air close to the dive target is a near arrival. */
+    static boolean diveArrived(boolean surfacingForAir,double remainToTarget){
+        return surfacingForAir&&remainToTarget<=DIVE_ARRIVE;
+    }
     private static final Set<UUID> surfacing=ConcurrentHashMap.newKeySet();
     static boolean success(String status){return "arrived".equals(status)||"arrived_near".equals(status);}
     static String arrival(double distanceSquared){return distanceSquared<=EXACT*EXACT?"arrived":distanceSquared<=TOLERANCE*TOLERANCE?"arrived_near":null;}
@@ -213,7 +230,9 @@ final class AgentNavigation {
         if(wp[3]==AgentPathfinder.STOOP && tryStoop(player,to))return;
         // Drive the body ourselves. Do not cancel/retarget Citizens (that fires
         // NavigationCompleteEvent and used to replan 32 times before the first step).
-        driveWalk(player,to,sprint,wp[3],trip.target.getY()+1);
+        diveRemain.put(player.getUniqueId(),player.getLocation().distance(trip.target));
+        try{driveWalk(player,to,sprint,wp[3],trip.target.getY()+1);}
+        finally{diveRemain.remove(player.getUniqueId());}
         if(trip.driveAt<=0)trip.driveAt=System.currentTimeMillis();
     }
     static boolean replanFrom(NPC npc,Trip trip,Player player,int px,int py,int pz){
@@ -590,6 +609,7 @@ final class AgentNavigation {
         }
         String done=arrival(current,trip.target);
         if("arrived".equals(done)){npc.getNavigator().cancelNavigation();trip.status="arrived";trip.reason="";return;}
+        if(done==null&&diveArrived(surfacing(player.getUniqueId()),current.distance(trip.target))){npc.getNavigator().cancelNavigation();trip.status="arrived_near";trip.reason="Surfaced for air within "+Math.round(current.distance(trip.target)*10)/10.0+" blocks of dive target";return;}
         if(done!=null&&(now-trip.lastProgressAt>800||!npc.getNavigator().isNavigating())){npc.getNavigator().cancelNavigation();trip.status="arrived_near";trip.reason="Stopped within "+TOLERANCE+" blocks of target";return;}
         if(nearEnough(current,trip.target,trip.travelled)&&trip.path!=null&&trip.pathIndex>=trip.path.size()){trip.status="arrived_near";trip.reason="";return;}
         if(trip.path!=null&&trip.pathIndex<trip.path.size()){
@@ -889,7 +909,9 @@ final class AgentNavigation {
         boolean was=surfacing.contains(id);
         int air=0,max=0;
         try{air=player.getRemainingAir();max=player.getMaximumAir();}catch(RuntimeException ignored){return was;}
+        Double remain=diveRemain.get(id);
         boolean now=w.feet&&needsAir(air,max,was);
+        if(now&&!was&&remain!=null)now=surfaceNow(true,air,max,remain);
         if(now&&!was){
             surfacing.add(id);
             try{AgentEvents.emit(AgentEvents.agentId(net.citizensnpcs.api.CitizensAPI.getNPCRegistry().getNPC(player)),"nav.surfacing_for_air",AgentEvents.data("air",air,"maxAir",max,"y",player.getLocation().getY()));}catch(RuntimeException ignored){}

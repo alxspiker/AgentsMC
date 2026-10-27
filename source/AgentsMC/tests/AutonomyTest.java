@@ -134,7 +134,7 @@ public final class AutonomyTest {
             throw new AssertionError("fb-20: lingering food use must be cleared");
         if (AgentAutonomy.staleItemUse(true, "SHIELD") || AgentAutonomy.staleItemUse(false, "BREAD"))
             throw new AssertionError("fb-20: shield block and idle hand must be left alone");
-        System.out.println("PASS: 100ms action poll, separate telemetry, defer offline body, concurrent actions while moving, background programs, preemption/pipelining, abortIf interrupts, micro-autonomy, 0.7.4, fb-20 stale eat use cleared");
+        System.out.println("PASS: 100ms action poll, separate telemetry, defer offline body, concurrent actions while moving, background programs, preemption/pipelining, abortIf interrupts, micro-autonomy, 0.7.5, fb-20 stale eat use cleared");
     }
 
     private static void check(boolean ok, String message) {

@@ -1,5 +1,18 @@
 # Notes announced as plugin.updated for the matching plugin.yml version only.
 # Never backfill older versions; agents receive the currently running entry.
+0.7.5:
+  changes:
+    - bed lock. A bed or anchor claimed by an agent is locked to that agent; players (ops included) cannot sleep in it or set spawn there, and other agents cannot sleep, claim or set spawn on it
+    - op commands accept target names with spaces, either quoted ("Hero Steve") or as an agent display name written out (tp Hero Steve to 0 70 0)
+    - op tp never leaves a body inside blocks. If the feet or head cell is solid after the teleport the body moves up to the first two-block air space
+    - deep dives finish the last few blocks before surfacing for air unless air is critical (10% or less), and surfacing within 3 blocks of the dive target counts as arrived_near instead of failed
+    - fixed agents respawning at world spawn after dying near their claimed bed (fb-51). A claimed bed that still exists and is unobstructed is always the respawn point
+  actionsAdded: []
+  actionsChanged:
+    - op
+    - goto
+    - sleep
+    - set_spawn
 0.7.4:
   changes:
     - fixed agents snapping to the seabed and drowning. The idle airborne snap-down treated water as empty air, so a body floating on the surface (or a goto into water) was teleported to the bottom (same_column_air_snap). Any body in or right over water is now never air-snapped

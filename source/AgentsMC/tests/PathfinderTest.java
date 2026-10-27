@@ -106,6 +106,12 @@ public final class PathfinderTest {
         check(AgentNavigation.needsAir(90, 300, false) && AgentNavigation.needsAir(0, 300, false), "low air surfaces");
         check(AgentNavigation.needsAir(200, 300, true) && !AgentNavigation.needsAir(290, 300, true), "resume dive after refill");
         check(!AgentNavigation.needsAir(0, 0, false), "no max air, no surfacing");
+        // 0.7.5 dive arrival: finish the last leg unless air is critical; surfacing near target is arrived_near.
+        check(!AgentNavigation.surfaceNow(true, 80, 300, 2.6), "finish dive 2.6 short");
+        check(AgentNavigation.surfaceNow(true, 25, 300, 2.6), "critical air surfaces anyway");
+        check(AgentNavigation.surfaceNow(true, 80, 300, 10), "far target surfaces");
+        check(!AgentNavigation.surfaceNow(false, 80, 300, 10), "plenty of air");
+        check(AgentNavigation.diveArrived(true, 2.6) && !AgentNavigation.diveArrived(true, 5) && !AgentNavigation.diveArrived(false, 1), "dive arrival tolerance");
         // Vertical swim: surfacing always rises with wet head even when the waypoint is deeper.
         check(AgentNavigation.swimVy(true, true, true, 57.0, 56.0, -0.2) >= AgentNavigation.SWIM_UP, "low air ascends over a dive");
         check(AgentNavigation.swimVy(true, true, false, 57.0, 56.0, -0.2) < 0, "dive kept when air is fine");

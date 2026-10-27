@@ -89,8 +89,58 @@ final class AgentOp {
         JsonElement a = input.get("args");
         List<String> out = new ArrayList<>();
         if (a.isJsonArray()) { for (JsonElement e : a.getAsJsonArray()) out.add(e.getAsString()); }
-        else if (a.isJsonPrimitive()) { String s = a.getAsString().trim(); if (!s.isEmpty()) out.addAll(Arrays.asList(s.split("\\s+"))); }
+        else if (a.isJsonPrimitive()) out.addAll(tokenize(a.getAsString()));
         else throw new IllegalArgumentException("args must be a string (space separated) or an array of strings");
+        return out;
+    }
+    /** 0.7.5: split on whitespace but keep "quoted names" (single or double quotes) as one token. */
+    static List<String> tokenize(String s) {
+        List<String> out = new ArrayList<>();
+        if (s == null) return out;
+        StringBuilder cur = new StringBuilder();
+        char quote = 0; boolean any = false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (quote != 0) { if (c == quote) quote = 0; else cur.append(c); continue; }
+            if (c == '"' || c == '\'') { quote = c; any = true; continue; }
+            if (Character.isWhitespace(c)) { if (any || cur.length() > 0) { out.add(cur.toString().trim().replaceAll("\\s+", " ")); cur.setLength(0); any = false; } continue; }
+            cur.append(c); any = true;
+        }
+        if (any || cur.length() > 0) out.add(cur.toString().trim().replaceAll("\\s+", " "));
+        return out;
+    }
+    /** 0.7.5: rejoin unquoted multi-word agent names ("Hero Steve") using the longest known match at each position. */
+    static List<String> mergeNames(List<String> a, java.util.function.Predicate<String> known) {
+        List<String> out = new ArrayList<>();
+        int i = 0;
+        while (i < a.size()) {
+            int best = -1;
+            for (int j = a.size(); j > i + 1; j--) {
+                if (known.test(String.join(" ", a.subList(i, j)))) { best = j; break; }
+            }
+            if (best > 0) { out.add(String.join(" ", a.subList(i, best))); i = best; }
+            else out.add(a.get(i++));
+        }
+        return out;
+    }
+    static boolean knownAgentName(String name) {
+        try { return agentByName(name) != null; } catch (RuntimeException e) { return true; }
+    }
+    /** 0.7.5: first feet y at or above {@code y} where neither feet nor head is solid. */
+    static int safeFeetY(int y, java.util.function.IntPredicate solid, int maxY) {
+        int cur = y;
+        while (cur < maxY && (solid.test(cur) || solid.test(cur + 1))) cur++;
+        return cur;
+    }
+    static Location safeDest(Location dest) {
+        if (dest == null || dest.getWorld() == null) return dest;
+        World w = dest.getWorld();
+        int bx = dest.getBlockX(), bz = dest.getBlockZ(), by = dest.getBlockY();
+        java.util.function.IntPredicate solid = yy -> { try { return w.getBlockAt(bx, yy, bz).getType().isSolid(); } catch (RuntimeException e) { return false; } };
+        if (!solid.test(by) && !solid.test(by + 1)) return dest;
+        int ny = safeFeetY(by, solid, w.getMaxHeight() - 1);
+        Location out = dest.clone();
+        out.setY(ny);
         return out;
     }
     static String subcommand(JsonObject input) {
@@ -143,7 +193,7 @@ final class AgentOp {
         try {
             if (!isOp(agentId)) throw new IllegalStateException("Agent " + agentId + " is not opped; a server console must run /agentsmc op " + agentId);
             cmd = subcommand(input);
-            a = args(input);
+            a = mergeNames(args(input), AgentOp::knownAgentName);
             out = run(plugin, self, agentId, cmd, a);
             out.put("ok", true);
         } catch (RuntimeException e) {
@@ -196,9 +246,15 @@ final class AgentOp {
                     dest = new Location(w, x, y, z, who.getLocation().getYaw(), who.getLocation().getPitch());
                 } else if (d.size() == 1) dest = targetEntity(d.get(0)).getLocation();
                 else throw new IllegalArgumentException("usage: tp <agent|player> [to] <x y z | player | agent>");
+                dest = safeDest(dest);
                 NPC npc = CitizensAPI.getNPCRegistry().getNPC(who);
                 if (npc != null) npc.teleport(dest, PlayerTeleportEvent.TeleportCause.PLUGIN);
                 else who.teleport(dest);
+                Location after = safeDest(who.getLocation());
+                if (after != null && after.getY() != who.getLocation().getY()) {
+                    if (npc != null) npc.teleport(after, PlayerTeleportEvent.TeleportCause.PLUGIN); else who.teleport(after);
+                    dest = after;
+                }
                 return msg("teleported " + who.getName() + " to " + dest.getWorld().getName() + " " + Math.round(dest.getX()) + " " + Math.round(dest.getY()) + " " + Math.round(dest.getZ()));
             }
             case "heal": {

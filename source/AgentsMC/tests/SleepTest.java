@@ -23,6 +23,24 @@ public final class SleepTest {
         // choose: persisted bed wins unless it is the death camp; else world spawn.
         check(AgentRespawn.choose(null, null, null) == null, "all missing");
         check(!AgentRespawn.usable(null), "null unusable");
+        // 0.7.5 bed lock: agent claim blocks humans (ops too) and other agents; own bed and human claims unaffected.
+        AgentRespawn.Claim lock = new AgentRespawn.Claim();
+        lock.agentId = "hero"; lock.name = "Hero Steve";
+        check(AgentRespawn.lockedAgainst(lock, true, null), "player locked out of agent bed");
+        check(AgentRespawn.lockedAgainst(lock, false, "other"), "other agent locked out");
+        check(!AgentRespawn.lockedAgainst(lock, false, "hero"), "owner may sleep");
+        check(!AgentRespawn.lockedAgainst(null, true, null), "unclaimed bed free");
+        AgentRespawn.Claim humanBed = new AgentRespawn.Claim(); humanBed.player = true;
+        check(!AgentRespawn.lockedAgainst(humanBed, true, null), "human claim is not an agent lock");
+        org.bukkit.World fakeWorld = (org.bukkit.World) java.lang.reflect.Proxy.newProxyInstance(SleepTest.class.getClassLoader(),
+                new Class<?>[]{org.bukkit.World.class}, (px, m, a) -> m.getName().equals("equals") ? px == a[0] : m.getName().equals("hashCode") ? 1 : m.getName().equals("getName") ? "world" : null);
+        org.bukkit.Location bed = new org.bukkit.Location(fakeWorld, 10.5, 64.5, -2.5);
+        org.bukkit.Location spawn = new org.bukkit.Location(fakeWorld, 200, 70, 200);
+        org.bukkit.Location died = new org.bukkit.Location(fakeWorld, 12, 64, -1);
+        check(AgentRespawn.choose(bed, spawn, spawn, died) == bed, "fb-51: died within 8 of bed respawns at bed");
+        check(AgentRespawn.choose(bed, true, spawn, spawn, died) == bed, "fb-51: intact bed wins");
+        check(AgentRespawn.choose(bed, false, spawn, spawn, died) == spawn, "obstructed/missing bed falls back to world spawn");
+        check(AgentRespawn.lockMessage(lock).contains("Hero Steve"), "lock message names owner");
         check(AgentRespawn.sameCamp(-2.5, 79, 1.5, -1.2, 77, 5.3, 8), "death nest is same camp");
         check(!AgentRespawn.sameCamp(0, 64, 0, 20, 64, 0, 8), "world spawn is not the nest");
         check(AgentRespawn.repeatCamp(java.util.UUID.randomUUID(), null, 1) == false, "null death is not a camp");
@@ -132,8 +150,8 @@ public final class SleepTest {
             check(up != null && !bedCells.contains(up[0] + "," + up[2]), "step-up spot not on bed " + f);
         }
         check(AgentSleep.wakeSpot(0, 64, 0, "NORTH", c -> false) == null, "no spot -> null (fallback on top of bed)");
-        check("0.7.4".equals(version), "plugin.yml version: " + version);
-        System.out.println("PASS: sleep/respawn encode, bed claims visible, human player claims, steal refused, death-camp, voluntary home, daytime sleep note, pose wake, bed head/facing x4, dawn auto-wake, wake beside bed, 0.7.4");
+        check("0.7.5".equals(version), "plugin.yml version: " + version);
+        System.out.println("PASS: sleep/respawn encode, bed claims visible, human player claims, steal refused, death-camp, voluntary home, daytime sleep note, pose wake, bed head/facing x4, dawn auto-wake, wake beside bed, 0.7.5 bed lock + fb-51 respawn at bed");
     }
 
     private static void check(boolean ok, String message) {

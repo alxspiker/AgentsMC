@@ -84,7 +84,14 @@ final class AgentRespawn {
         return choose(persisted, vanilla, worldSpawn, null);
     }
     static Location choose(Location persisted, Location vanilla, Location worldSpawn, Location deathAt) {
-        if (usable(persisted) && !sameCamp(persisted, deathAt, CAMP_RADIUS)) return persisted;
+        return choose(persisted, true, vanilla, worldSpawn, deathAt);
+    }
+    /**
+     * 0.7.5 (fb-51): a claimed bed/anchor that still exists and is unobstructed always wins,
+     * even when the agent died next to it. Only a missing/obstructed claim falls back.
+     */
+    static Location choose(Location persisted, boolean persistedIntact, Location vanilla, Location worldSpawn, Location deathAt) {
+        if (usable(persisted) && persistedIntact) return persisted;
         if (usable(worldSpawn)) return worldSpawn;
         if (usable(vanilla) && !sameCamp(vanilla, deathAt, CAMP_RADIUS)) return vanilla;
         return usable(worldSpawn) ? worldSpawn : vanilla;
@@ -136,6 +143,59 @@ final class AgentRespawn {
         }
         recentDeaths.put(id, new long[]{now, 1, bx, by, bz});
         return false;
+    }
+    /** True when the stored claim block is still a bed/anchor and the space above it is passable. */
+    static boolean intact(Location persisted) {
+        if (!usable(persisted)) return false;
+        try {
+            if (!chunkLoaded(persisted)) return true;
+            Block b = snapClaimBlock(persisted);
+            if (b == null) return false;
+            Block up = b.getRelative(0, 1, 0);
+            return up.isPassable() && !up.isLiquid();
+        } catch (RuntimeException e) { return true; }
+    }
+    /** Bed lock: a claim held by an agent blocks every player and every other agent. */
+    static boolean lockedAgainst(Claim c, boolean human, String selfAgentId) {
+        if (c == null || c.player) return false;
+        if (human) return true;
+        return !AgentIds.same(c.agentId, selfAgentId);
+    }
+    static String lockMessage(Claim c) {
+        return "This bed belongs to agent " + (c == null || c.name == null || c.name.isBlank() ? "another agent" : c.name) + " and is locked.";
+    }
+    static Claim agentClaim(Block block) {
+        if (block == null || block.getWorld() == null) return null;
+        if (!isBed(block.getType().name()) && !isAnchor(block.getType().name())) return null;
+        int[] half = otherHalf(block);
+        for (Claim c : npcClaims())
+            if (covers(block.getWorld().getName(), block.getX(), block.getY(), block.getZ(), c.world, c.x + 0.5, c.y + 0.5, c.z + 0.5, half))
+                return c;
+        return null;
+    }
+    /** Cancels human (incl. op) bed use / spawn set on an agent-claimed bed. */
+    static final class Lock implements org.bukkit.event.Listener {
+        @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.LOWEST, ignoreCancelled = false)
+        public void interact(org.bukkit.event.player.PlayerInteractEvent ev) {
+            if (ev.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK || ev.getClickedBlock() == null) return;
+            if (!isHuman(ev.getPlayer())) return;
+            Claim c = agentClaim(ev.getClickedBlock());
+            if (!lockedAgainst(c, true, null)) return;
+            ev.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
+            ev.setCancelled(true);
+            try { ev.getPlayer().sendMessage(org.bukkit.ChatColor.RED + lockMessage(c)); } catch (RuntimeException ignored) {}
+        }
+        @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.LOWEST)
+        public void enter(org.bukkit.event.player.PlayerBedEnterEvent ev) {
+            Player p = ev.getPlayer();
+            Claim c = agentClaim(ev.getBed());
+            String self = null;
+            boolean human = isHuman(p);
+            if (!human) {
+                try { NPC n = CitizensAPI.getNPCRegistry().getNPC(p); self = selfId(n); } catch (Throwable ignored) {}
+            }
+            if (lockedAgainst(c, human, self)) ev.setCancelled(true);
+        }
     }
     static void forget(UUID id) { if (id != null) recentDeaths.remove(id); }
 
@@ -454,6 +514,7 @@ final class AgentRespawn {
         Claim c = occupant(block);
         if (c == null) return;
         if (AgentIds.same(c.agentId, selfId(npc))) return;
+        if (!c.player) throw new IllegalArgumentException(lockMessage(c) + " " + stealError(c.name));
         throw new IllegalArgumentException(stealError(c.name));
     }
 

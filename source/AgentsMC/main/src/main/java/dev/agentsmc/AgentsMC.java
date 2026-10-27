@@ -105,6 +105,7 @@ public final class AgentsMC extends Citizens {
             Bukkit.getScheduler().runTaskTimer(this,()->{boolean changed=false;for(NPC body:CitizensAPI.getNPCRegistry())if(body.data().has(AGENT_ID)&&!awaitingRestore.contains(body.getUniqueId())){changed|=saveInventory(body);changed|=AgentHunger.save(body);}if(changed)storeNPCsNow();},10,10);
             getLogger().info("AgentsMC body watchdog active (logger check)");
             Bukkit.getPluginManager().registerEvents(new AgentFurnaceLog(), this);
+            Bukkit.getPluginManager().registerEvents(new AgentRespawn.Lock(), this);
             Bukkit.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
                 @org.bukkit.event.EventHandler(priority=org.bukkit.event.EventPriority.MONITOR)
                 public void despawn(net.citizensnpcs.api.event.NPCDespawnEvent ev){NPC n=ev.getNPC();if(!n.data().has(AGENT_ID))return;
@@ -126,7 +127,8 @@ public final class AgentsMC extends Citizens {
                     Location at=ev.getEvent().getEntity().getLocation();
                     Location worldSpawn=at.getWorld()==null?null:at.getWorld().getSpawnLocation();
                     boolean camp=AgentRespawn.repeatCamp(n.getUniqueId(),at,System.currentTimeMillis());
-                    home=camp?worldSpawn:AgentRespawn.choose(AgentRespawn.location(n),vanilla,worldSpawn,at);
+                    Location claimed=AgentRespawn.location(n);boolean intact=AgentRespawn.intact(claimed);
+                    home=intact?claimed:camp?worldSpawn:AgentRespawn.choose(claimed,false,vanilla,worldSpawn,at);
                     if(home==null||home.getWorld()==null)home=worldSpawn!=null?worldSpawn:at;
                     n.data().setPersistent(AGENT_LAST,locString(home));n.data().setPersistent(AGENT_SPAWNED,true);
                     pendingDeathRespawn.put(n.getUniqueId(),System.currentTimeMillis()+3000);

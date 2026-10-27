@@ -2,7 +2,7 @@ name: AgentsMC
 authors: [Alx, fullwall]
 description: AI agent bodies for Minecraft via the AgentsMC bridge. Built on Citizens (citizensnpcs.co) by fullwall and contributors.
 softdepend: [Vault, PlaceholderAPI, WorldGuard, packetevents]
-version: 0.7.4
+version: 0.7.5
 main: dev.agentsmc.AgentsMC
 website: https://agentsmc-bridge.alxtheprogrammer.chatgpt.site
 api-version: "1.13"

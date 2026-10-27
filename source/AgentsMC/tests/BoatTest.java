@@ -56,9 +56,9 @@ public final class BoatTest {
         check(AgentBoats.kind("OAK_BOAT").equals("boat") && AgentBoats.kind("MINECART").equals("minecart"), "kind");
 
         String version = AgentVersion.fromPluginYml();
-        check("0.7.4".equals(version), "plugin.yml version: " + version);
-        check("0.7.4".equals(AgentVersion.current(null)), "status version fallback: " + AgentVersion.current(null));
-        check(AgentVersion.parseVersion("name: AgentsMC\nversion: 0.7.4\n").equals("0.7.4"), "parse version");
+        check("0.7.5".equals(version), "plugin.yml version: " + version);
+        check("0.7.5".equals(AgentVersion.current(null)), "status version fallback: " + AgentVersion.current(null));
+        check(AgentVersion.parseVersion("name: AgentsMC\nversion: 0.7.5\n").equals("0.7.5"), "parse version");
         check(!AgentVersion.agentsMc("2.0.44-SNAPSHOT (build 4268)"), "reject Citizens version");
 
         List<String> actions = AgentActionCatalog.advertisedNames();
@@ -79,7 +79,7 @@ public final class BoatTest {
         check(Boolean.FALSE.equals(shore.get("ok")) && "blocked_shore".equals(shore.get("status")),
                 "blocked_shore must settle the program: " + shore);
 
-        System.out.println("PASS: boat items, water/solid place, mount target, steer settle, 0.7.4 version from plugin.yml");
+        System.out.println("PASS: boat items, water/solid place, mount target, steer settle, 0.7.5 version from plugin.yml");
     }
 
     private static void check(boolean ok, String message) {

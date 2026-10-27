@@ -301,7 +301,7 @@ public final class AgentUiTest {
         check(pub != null && pub.changes.stream().anyMatch(s -> s.contains("/agentsmc link")),
                 "changelog 0.7.0: " + pub);
 
-        System.out.println("PASS: panel html bundled, under 512KiB, debounce, no credentials, 0.7.4");
+        System.out.println("PASS: panel html bundled, under 512KiB, debounce, no credentials, 0.7.5");
     }
 
     static void check(boolean ok, String message) {
